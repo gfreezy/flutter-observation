@@ -1,0 +1,23 @@
+name: flutter_observation_example
+description: Example app for flutter_observation.
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_observation:
+    path: ..
+
+dev_dependencies:
+  build_runner: 2.15.1
+  flutter_observation_generator:
+    path: ../packages/flutter_observation_generator
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

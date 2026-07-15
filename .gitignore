@@ -1,0 +1,22 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.idea/
+.vscode/
+
+# Dart and Flutter generated files
+.dart_tool/
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+**/doc/api/
+**/build/
+coverage/
+
+# Platform-generated files
+**/Flutter/ephemeral/
+**/.symlinks/
