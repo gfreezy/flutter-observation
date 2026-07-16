@@ -2,6 +2,7 @@
 .github/
 build/
 coverage/
+doc/api/
 pubspec.lock
 tool/
 example/analysis_options.yaml
