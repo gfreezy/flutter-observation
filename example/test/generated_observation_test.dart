@@ -132,7 +132,7 @@ void main() {
     expect(externalChanges, 1);
   });
 
-  testWidgets('generated Widget owns, observes, and disposes @plainState', (
+  testWidgets('generated Widget owns, observes, and disposes @PlainState', (
     tester,
   ) async {
     final tracker = LifecycleTracker();
@@ -159,9 +159,21 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     expect(tracker.disposed, 2);
   });
+
+  testWidgets('generated cleanup continues after a dispose error', (
+    tester,
+  ) async {
+    final tracker = CleanupTracker();
+
+    await tester.pumpWidget(CleanupLifecycleExample(tracker: tracker));
+    await tester.pumpWidget(const SizedBox.shrink());
+
+    expect(tracker.disposed, ['second', 'first']);
+    expect(tester.takeException(), isA<StateError>());
+  });
 }
 
-final class _Value extends ReactiveStatelessWidget {
+final class _Value extends ObservationStatelessWidget {
   const _Value({required this.read, required this.onBuild});
 
   final String Function() read;

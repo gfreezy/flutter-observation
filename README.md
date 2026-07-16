@@ -5,46 +5,44 @@
 它提供两套统一的代码生成入口：
 
 ```dart
-@observableModel  // 声明可观察 Model
-@observationWidget  // 声明自动观察的 Widget
+@ObservableModel()   // 声明可观察 Model
+@ObservationWidget() // 声明自动观察的 Widget
 ```
 
-Widget 中存在 `@plainState` 或 `@observableState` factory 时，生成器会自动管理
-状态的创建、注入、更新和释放。`@plainState` 只接受非 Observable，
-`@observableState` 只接受 Observable；没有 state factory 时，生成器只负责
-跟踪 `build()` 中读取的 Observable。
+Widget 中存在 `@PlainState()` 或 `@ObservableState()` factory 时，生成器会自动
+管理状态的创建、注入、更新和释放。`@PlainState()` 明确声明普通资源，
+`@ObservableState()` 明确要求状态实现 `ObservableObject`；没有 state factory
+时，生成器只负责跟踪 `build()` 中读取的 Observable。
 
-所有无参数注解都有小写简写：
+所有 annotation 统一使用大写构造形式：
 
-| 简写 | 完整写法 |
+| Annotation | 意图 |
 | --- | --- |
-| `@observableModel` | `@ObservableModel()` |
-| `@observationIgnored` | `@ObservationIgnored()` |
-| `@observationReadOnly` | `@ObservationReadOnly()` |
-| `@observationAlwaysNotify` | `@ObservationAlwaysNotify()` |
-| `@observationWidget` | `@ObservationWidget()` |
-| `@plainState` | `@PlainState()` |
-| `@observableState` | `@ObservableState()` |
+| `@ObservableModel()` | 生成可观察 Model |
+| `@ObservationIgnored()` | 属性不参与观察 |
+| `@ObservationReadOnly()` | 属性只生成 getter |
+| `@ObservationAlwaysNotify()` | 赋值时跳过相等判断 |
+| `@ObservationWidget()` | 生成自动跟踪 Widget |
+| `@PlainState()` | 拥有不可观察的普通资源 |
+| `@ObservableState()` | 拥有且要求可观察的状态 |
 
-需要传递选项时使用完整构造函数，例如
+需要传递选项时仍使用相同构造函数，例如
 `@PlainState(name: 'resource', autoDispose: false)` 或
 `@ObservableState(name: 'user', autoDispose: false)`。
 
 ## 安装
 
-当前仓库使用本地路径：
+准备发布的 prerelease：
 
 ```yaml
 dependencies:
   flutter:
     sdk: flutter
-  flutter_observation:
-    path: ../flutter-observation
+  flutter_observation: ^0.2.0-dev.1
 
 dev_dependencies:
   build_runner: ^2.15.1
-  flutter_observation_generator:
-    path: ../flutter-observation/packages/flutter_observation_generator
+  flutter_observation_generator: ^0.2.0-dev.1
 ```
 
 ```bash
@@ -58,7 +56,7 @@ import 'package:flutter_observation/flutter_observation.dart';
 
 part 'user.g.dart';
 
-@observableModel
+@ObservableModel()
 class User extends _$User {
   User({String name = '', int age = 18}) : super(name, age);
 
@@ -85,12 +83,12 @@ dart run build_runner watch
 
 ## 无内部状态的响应式 Widget
 
-外部传入 Model 时，只使用 `@observationWidget`：
+外部传入 Model 时，只使用 `@ObservationWidget()`：
 
 ```dart
 part 'user_card.g.dart';
 
-@observationWidget
+@ObservationWidget()
 class UserCard extends _$UserCard {
   const UserCard({
     required this.user,
@@ -111,18 +109,18 @@ class UserCard extends _$UserCard {
 
 ## 拥有内部状态的响应式 Widget
 
-使用 `@observableState` 标记返回非空 `ObservableObject` 的零参数 factory。
-返回值可以是 `@observableModel` Model、`Observable<T>`、Observable 集合，或
+使用 `@ObservableState()` 标记返回非空 `ObservableObject` 的零参数 factory。
+返回值可以是 `@ObservableModel()` Model、`Observable<T>`、Observable 集合，或
 手动混入 `ObservableModelMixin` 的类型：
 
 ```dart
 part 'user_page.g.dart';
 
-@observationWidget
+@ObservationWidget()
 class UserPage extends _$UserPage {
   const UserPage({super.key});
 
-  @observableState
+  @ObservableState()
   User createUser() => User(name: 'Alice');
 
   @override
@@ -151,11 +149,11 @@ class UserPage extends _$UserPage {
 - 跟踪 `build()` 中的 Observable 读取。
 - Widget 移除时自动调用状态类型公开的零参数 `dispose()`。
 
-普通资源使用 `@plainState`。它要求返回类型不能实现 `ObservableObject`，只表达
+普通资源使用 `@PlainState()`。它要求返回类型不能实现 `ObservableObject`，只表达
 Widget 对对象的所有权和生命周期：
 
 ```dart
-@plainState
+@PlainState()
 PageResource createResource() => PageResource();
 ```
 
@@ -164,14 +162,14 @@ PageResource createResource() => PageResource();
 ## 多个状态
 
 ```dart
-@observationWidget
+@ObservationWidget()
 class UserPage extends _$UserPage {
   const UserPage({super.key});
 
-  @observableState
+  @ObservableState()
   User createUser() => User(name: 'Alice');
 
-  @observableState
+  @ObservableState()
   Settings createSettings() => Settings();
 
   @override
@@ -215,7 +213,7 @@ User makeUser() => User(name: 'Alice');
 ExternalResource createSharedResource() => sharedResource;
 ```
 
-`Observable<T>` 和普通 `@observableModel` Model 是纯 Observation 对象，本身
+`Observable<T>` 和普通 `@ObservableModel()` Model 是纯 Observation 对象，本身
 不需要 dispose。持有 Controller、Timer 或 Subscription 的 Observable Model
 可以公开零参数 `dispose()`，由生成器自动识别并释放。
 
@@ -260,7 +258,7 @@ void disposeStates({required User user}) {
 只消费外部 Model：
 
 ```dart
-class UserCard extends ReactiveStatelessWidget {
+class UserCard extends ObservationStatelessWidget {
   const UserCard({required this.user, super.key});
 
   final User user;
@@ -273,7 +271,7 @@ class UserCard extends ReactiveStatelessWidget {
 直接拥有一个 Model：
 
 ```dart
-class UserPage extends ReactiveStatefulWidget<User> {
+class UserPage extends ObservationStatefulWidget<User> {
   const UserPage({super.key});
 
   @override
@@ -302,17 +300,30 @@ Observer(
 已有 `StatefulWidget`：
 
 ```dart
-class _PageState extends State<Page> with ReactiveStateMixin<Page> {
+class _PageState extends State<Page> with ObservationStateMixin<Page> {
   @override
   Widget build(BuildContext context) {
-    return buildReactive((context) => Text(widget.user.name));
+    return buildObserved((context) => Text(widget.user.name));
   }
 }
 ```
 
+跨 Widget 子树共享 Model：
+
+```dart
+ObservationScope<User>(
+  value: user,
+  child: const UserPage(),
+);
+
+// 在 Observer、ObservationStatelessWidget 或生成 Widget 中读取：
+final user = ObservationScope.of<User>(context);
+return Text(user.name);
+```
+
 ## 单值 Observable
 
-`Observable<T>` 与 `@observableModel` Model 使用相同的 Registrar，不依赖
+`Observable<T>` 与 `@ObservableModel()` Model 使用相同的 Registrar，不依赖
 `ChangeNotifier`，因此不需要 dispose：
 
 ```dart
@@ -324,6 +335,21 @@ Observer(
 
 count.value++;
 ```
+
+需要接入 `ValueListenableBuilder`、`AnimatedBuilder` 等 Flutter API 时：
+
+```dart
+final name = toValueListenable(() => user.name);
+
+ValueListenableBuilder(
+  valueListenable: name,
+  builder: (context, value, child) => Text(value),
+);
+
+name.dispose();
+```
+
+`ObservationValueListenable` 拥有连续观察 subscription，单独创建时需要 dispose。
 
 ## 可观察集合
 
@@ -341,17 +367,20 @@ scores['Alice'] = 11;
 selected.add('Alice');
 ```
 
-集合本身不注册到外部 source，因此不需要 dispose。
+集合本身不注册到外部 source，因此不需要 dispose。直接索引、键和成员查询是
+细粒度依赖：修改 `scores['Bob']` 不会让只读取 `scores['Alice']` 的观察者失效；
+迭代、`join()`、`keys` 等整体读取仍会观察完整内容。List 的插入和删除会使受影响
+位置之后的索引依赖失效。
 
 ## 嵌套 Observable
 
 ```dart
-@observableModel
+@ObservableModel()
 class Address extends _$Address {
   Address({String city = 'Shanghai'}) : super(city);
 }
 
-@observableModel
+@ObservableModel()
 class User extends _$User {
   User({required Address address}) : super(address);
 }
@@ -371,16 +400,38 @@ withObservationTracking(
 );
 ```
 
+需要在首次变化前主动取消时：
+
+```dart
+final tracking = withCancellableObservationTracking(
+  () => user.name,
+  onChange: scheduleRender,
+);
+
+tracking.cancel();
+```
+
 连续观察：
 
 ```dart
 final subscription = observe(
   () => user.name,
   onChange: print,
+  onError: (error, stackTrace) => report(error, stackTrace),
   fireImmediately: true,
 );
 
 subscription.dispose();
+```
+
+默认使用 microtask 合并同步变化，也可以按下一帧刷新：
+
+```dart
+observe(
+  () => user.name,
+  onChange: print,
+  scheduler: ObservationSchedulers.frame,
+);
 ```
 
 异步 Stream：
@@ -402,23 +453,42 @@ observationTransaction(() {
 
 同一观察者在一个事务中只失效一次。
 
+## 调试和性能基线
+
+开发工具可以订阅属性访问和通知事件；未设置回调时不会分配事件对象：
+
+```dart
+ObservationDebug.onEvent = (event) {
+  print('${event.kind}: ${event.property}');
+};
+
+// 调试结束后恢复
+ObservationDebug.onEvent = null;
+```
+
+运行仓库内的性能基线：
+
+```bash
+flutter test benchmark/observation_benchmark.dart --reporter expanded
+```
+
 ## Model generator 选项
 
 ```dart
-@observableModel
+@ObservableModel()
 class Box<T extends Object?> extends _$Box<T> {
   Box({
     required T value,
-    @observationReadOnly required String id,
-    @observationIgnored int cacheHits = 0,
-    @observationAlwaysNotify int revision = 0,
+    @ObservationReadOnly() required String id,
+    @ObservationIgnored() int cacheHits = 0,
+    @ObservationAlwaysNotify() int revision = 0,
   }) : super(value, id, cacheHits, revision);
 }
 ```
 
-- `@observationReadOnly`：只生成 getter。
-- `@observationIgnored`：不参与跟踪。
-- `@observationAlwaysNotify`：跳过 `==` 去重。
+- `@ObservationReadOnly()`：只生成 getter。
+- `@ObservationIgnored()`：不参与跟踪。
+- `@ObservationAlwaysNotify()`：跳过 `==` 去重。
 
 ## 跟踪规则
 
@@ -426,8 +496,8 @@ class Box<T extends Object?> extends _$Box<T> {
 - 每次重新构建会重新收集依赖，条件分支不再读取的属性会取消订阅。
 - 普通对象不会被递归变为 Observable。
 - 普通集合原地变更无法拦截，使用 Observable 集合或重新赋值。
-- `@plainState` 必须标记实例零参数方法，并返回非 `ObservableObject`。
-- `@observableState` 具有相同生命周期语义，但必须返回非空
+- `@PlainState()` 必须标记实例零参数方法，并返回非 `ObservableObject`。
+- `@ObservableState()` 具有相同生命周期语义，但必须返回非空
   `ObservableObject`；可空数据请包装在 `Observable<T?>` 中。
 - Widget constructor 参数属于外部配置，不会被自动释放。
 
@@ -451,4 +521,5 @@ cd example && flutter test
 cd packages/flutter_observation_generator && dart test
 ```
 
-更多说明参见 [`example/README.md`](example/README.md)。
+更多说明参见
+[`example/README.md`](https://github.com/gfreezy/flutter-observation/blob/main/example/README.md)。

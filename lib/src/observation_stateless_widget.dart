@@ -7,18 +7,19 @@ import 'tracking.dart';
 /// A widget with no owned business state whose observable reads are tracked.
 ///
 /// Framework-internal subscription state is managed automatically.
-abstract class ReactiveStatelessWidget extends StatefulWidget {
-  const ReactiveStatelessWidget({super.key});
+abstract class ObservationStatelessWidget extends StatefulWidget {
+  const ObservationStatelessWidget({super.key});
 
   Widget build(BuildContext context);
 
   @override
-  State<ReactiveStatelessWidget> createState() =>
-      _ReactiveStatelessWidgetState();
+  State<ObservationStatelessWidget> createState() =>
+      _ObservationStatelessWidgetState();
 }
 
-final class _ReactiveStatelessWidgetState extends State<ReactiveStatelessWidget>
-    implements ReactiveObserver {
+final class _ObservationStatelessWidgetState
+    extends State<ObservationStatelessWidget>
+    implements ObservationObserver {
   final Set<ObservationRegistrar> _registrars = {};
   bool _invalidated = false;
 
@@ -26,7 +27,7 @@ final class _ReactiveStatelessWidgetState extends State<ReactiveStatelessWidget>
   Widget build(BuildContext context) {
     _invalidated = false;
     _stopObserving();
-    return ReactiveTracking.track(this, () => widget.build(context));
+    return ObservationTracking.track(this, () => widget.build(context));
   }
 
   @override

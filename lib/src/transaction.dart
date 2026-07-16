@@ -1,11 +1,12 @@
 import 'dart:collection';
 
+import 'callbacks.dart';
 import 'observer.dart';
 
 /// Coalesces observation invalidations produced by a group of mutations.
 abstract final class ObservationTransaction {
   static int _depth = 0;
-  static final LinkedHashSet<ReactiveObserver> _pending = LinkedHashSet();
+  static final LinkedHashSet<ObservationObserver> _pending = LinkedHashSet();
 
   /// Runs [body] as one observation transaction.
   ///
@@ -21,7 +22,7 @@ abstract final class ObservationTransaction {
     }
   }
 
-  static void invalidate(ReactiveObserver observer) {
+  static void invalidate(ObservationObserver observer) {
     if (_depth > 0) {
       _pending.add(observer);
     } else {
@@ -31,11 +32,9 @@ abstract final class ObservationTransaction {
 
   static void _flush() {
     while (_pending.isNotEmpty) {
-      final observers = List<ReactiveObserver>.of(_pending);
+      final observers = List<ObservationObserver>.of(_pending);
       _pending.clear();
-      for (final observer in observers) {
-        observer.invalidate();
-      }
+      runObservationCallbacks(observers.map((observer) => observer.invalidate));
     }
   }
 }

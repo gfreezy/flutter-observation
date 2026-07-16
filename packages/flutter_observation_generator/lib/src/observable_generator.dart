@@ -26,13 +26,13 @@ final class ObservableGenerator
   ) {
     if (element is! ClassElement) {
       throw InvalidGenerationSourceError(
-        '@observableModel can only be used on a class.',
+        '@ObservableModel() can only be used on a class.',
         element: element,
       );
     }
     if (element.isAbstract) {
       throw InvalidGenerationSourceError(
-        '@observableModel classes must be concrete and extend the generated '
+        '@ObservableModel() classes must be concrete and extend the generated '
         'base class.',
         element: element,
       );
@@ -89,8 +89,8 @@ final class ObservableGenerator
       final alwaysNotify = _alwaysNotifyChecker.hasAnnotationOf(parameter);
       if (alwaysNotify && (ignored || readOnly)) {
         throw InvalidGenerationSourceError(
-          '@observationAlwaysNotify cannot be combined with '
-          '@observationIgnored or @observationReadOnly.',
+          '@ObservationAlwaysNotify() cannot be combined with '
+          '@ObservationIgnored() or @ObservationReadOnly().',
           element: parameter,
         );
       }

@@ -3,13 +3,13 @@ import 'package:flutter_observation/flutter_observation.dart';
 part 'advanced_models.g.dart';
 
 /// Exercises the advanced generator surface without adding noise to the UI.
-@observableModel
+@ObservableModel()
 class Box<T extends Object?> extends _$Box<T> {
   Box({
     required T value,
-    @observationReadOnly required String id,
-    @observationIgnored int cacheHits = 0,
-    @observationAlwaysNotify int revision = 0,
+    @ObservationReadOnly() required String id,
+    @ObservationIgnored() int cacheHits = 0,
+    @ObservationAlwaysNotify() int revision = 0,
   }) : super(value, id, cacheHits, revision);
 
   static final ObservationKey<String> _externalStatusKey =

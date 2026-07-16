@@ -26,14 +26,30 @@ final class LifecycleResource {
   }
 }
 
-@observationWidget
+final class CleanupTracker {
+  final List<String> disposed = [];
+}
+
+final class ThrowingCleanupResource {
+  ThrowingCleanupResource(this.name, this.tracker);
+
+  final String name;
+  final CleanupTracker tracker;
+
+  void dispose() {
+    tracker.disposed.add(name);
+    throw StateError('$name cleanup failed');
+  }
+}
+
+@ObservationWidget()
 class LifecycleExample extends _$LifecycleExample {
   const LifecycleExample({required this.id, required this.tracker, super.key});
 
   final String id;
   final LifecycleTracker tracker;
 
-  @plainState
+  @PlainState()
   LifecycleResource createResource() => LifecycleResource(id, tracker);
 
   @override
@@ -52,5 +68,31 @@ class LifecycleExample extends _$LifecycleExample {
     required LifecycleResource resource,
   }) {
     tracker.updated++;
+  }
+}
+
+@ObservationWidget()
+class CleanupLifecycleExample extends _$CleanupLifecycleExample {
+  const CleanupLifecycleExample({required this.tracker, super.key});
+
+  final CleanupTracker tracker;
+
+  @PlainState()
+  ThrowingCleanupResource createFirst() {
+    return ThrowingCleanupResource('first', tracker);
+  }
+
+  @PlainState()
+  ThrowingCleanupResource createSecond() {
+    return ThrowingCleanupResource('second', tracker);
+  }
+
+  @override
+  Widget build(
+    BuildContext context, {
+    required ThrowingCleanupResource first,
+    required ThrowingCleanupResource second,
+  }) {
+    return const SizedBox.shrink();
   }
 }

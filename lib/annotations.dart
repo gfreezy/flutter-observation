@@ -3,32 +3,20 @@ class ObservableModel {
   const ObservableModel();
 }
 
-/// Shorthand for [ObservableModel].
-const observableModel = ObservableModel();
-
 /// Excludes a generated constructor property from observation tracking.
 class ObservationIgnored {
   const ObservationIgnored();
 }
-
-/// Shorthand for [ObservationIgnored].
-const observationIgnored = ObservationIgnored();
 
 /// Generates a getter without a public setter for a constructor property.
 class ObservationReadOnly {
   const ObservationReadOnly();
 }
 
-/// Shorthand for [ObservationReadOnly].
-const observationReadOnly = ObservationReadOnly();
-
 /// Notifies after every assignment without comparing the previous value.
 class ObservationAlwaysNotify {
   const ObservationAlwaysNotify();
 }
-
-/// Shorthand for [ObservationAlwaysNotify].
-const observationAlwaysNotify = ObservationAlwaysNotify();
 
 /// Marks a Widget for reactive source generation.
 ///
@@ -38,9 +26,6 @@ const observationAlwaysNotify = ObservationAlwaysNotify();
 class ObservationWidget {
   const ObservationWidget();
 }
-
-/// Shorthand for [ObservationWidget].
-const observationWidget = ObservationWidget();
 
 /// Common configuration shared by the two state annotations.
 sealed class StateAnnotation {
@@ -65,9 +50,6 @@ final class PlainState extends StateAnnotation {
   const PlainState({super.name, super.autoDispose});
 }
 
-/// Shorthand for [PlainState] with its default options.
-const plainState = PlainState();
-
 /// Marks an owned state factory whose return type must be an
 /// `ObservableObject`.
 ///
@@ -76,6 +58,3 @@ const plainState = PlainState();
 final class ObservableState extends StateAnnotation {
   const ObservableState({super.name, super.autoDispose});
 }
-
-/// Shorthand for [ObservableState] with its default options.
-const observableState = ObservableState();

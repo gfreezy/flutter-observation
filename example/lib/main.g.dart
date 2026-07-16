@@ -25,7 +25,7 @@ abstract class _$ObservationExample extends StatefulWidget {
 }
 
 final class _$ObservationExampleState extends State<ObservationExample>
-    with ReactiveStateMixin<ObservationExample> {
+    with ObservationStateMixin<ObservationExample> {
   late User _user;
   bool _hasUser = false;
   bool _statesReady = false;
@@ -41,9 +41,11 @@ final class _$ObservationExampleState extends State<ObservationExample>
       _user = widget.createUser();
       _hasUser = true;
       _statesReady = true;
-    } catch (_) {
-      _disposeCreatedStates();
-      rethrow;
+    } catch (error, stackTrace) {
+      runObservationCallbacks([
+        () => Error.throwWithStackTrace(error, stackTrace),
+        _disposeCreatedStates,
+      ]);
     }
   }
 
@@ -51,7 +53,7 @@ final class _$ObservationExampleState extends State<ObservationExample>
   void didUpdateWidget(covariant ObservationExample oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.shouldRecreateStates(oldWidget)) {
-      stopReactiveObservation();
+      stopObservation();
       _disposeStates(oldWidget);
       _createStates();
     } else {
@@ -61,7 +63,7 @@ final class _$ObservationExampleState extends State<ObservationExample>
 
   @override
   Widget build(BuildContext context) {
-    return buildReactive((context) {
+    return buildObserved((context) {
       return widget.build(context, user: _user);
     });
   }
@@ -69,22 +71,24 @@ final class _$ObservationExampleState extends State<ObservationExample>
   void _disposeStates(ObservationExample owner) {
     if (!_statesReady) return;
     _statesReady = false;
-    try {
-      owner.disposeStates(user: _user);
-    } finally {
-      _disposeCreatedStates();
-    }
+    runObservationCallbacks([
+      () => owner.disposeStates(user: _user),
+      _disposeCreatedStates,
+    ]);
   }
 
   void _disposeCreatedStates() {
-    if (_hasUser) {
-      _hasUser = false;
-    }
+    runObservationCallbacks([
+      if (_hasUser)
+        () {
+          _hasUser = false;
+        },
+    ]);
   }
 
   @override
   void dispose() {
-    stopReactiveObservation();
+    stopObservation();
     try {
       _disposeStates(widget);
     } finally {
@@ -93,10 +97,10 @@ final class _$ObservationExampleState extends State<ObservationExample>
   }
 }
 
-abstract class _$UserCard extends ReactiveStatelessWidget {
+abstract class _$UserCard extends ObservationStatelessWidget {
   const _$UserCard({super.key});
 }
 
-abstract class _$AddressCard extends ReactiveStatelessWidget {
+abstract class _$AddressCard extends ObservationStatelessWidget {
   const _$AddressCard({super.key});
 }

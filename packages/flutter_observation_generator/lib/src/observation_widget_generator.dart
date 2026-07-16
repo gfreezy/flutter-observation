@@ -1,3 +1,7 @@
+/// Source generation for lifecycle-aware observation widgets.
+library;
+
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
@@ -33,13 +37,13 @@ final class ObservationWidgetGenerator
   ) {
     if (element is! ClassElement) {
       throw InvalidGenerationSourceError(
-        '@observationWidget can only be used on a class.',
+        '@ObservationWidget() can only be used on a class.',
         element: element,
       );
     }
     if (element.isAbstract) {
       throw InvalidGenerationSourceError(
-        '@observationWidget classes must be concrete.',
+        '@ObservationWidget() classes must be concrete.',
         element: element,
       );
     }
@@ -68,7 +72,7 @@ final class ObservationWidgetGenerator
       if (stateAnnotations.isEmpty) continue;
       if (stateAnnotations.length > 1) {
         throw InvalidGenerationSourceError(
-          'Use only one of @plainState and @observableState on a state '
+          'Use only one of @PlainState() and @ObservableState() on a state '
           'factory.',
           element: method,
         );
@@ -99,8 +103,8 @@ final class ObservationWidgetGenerator
       final returnsObservable = _isObservableType(method.returnType);
       if (requiresObservable && !returnsObservable) {
         throw InvalidGenerationSourceError(
-          '@observableState factories must return an ObservableObject. Use an '
-          '@observableModel model, Observable<T>, an observable collection, '
+          '@ObservableState() factories must return an ObservableObject. Use '
+          'an @ObservableModel() model, Observable<T>, an observable collection, '
           'or a '
           'type that mixes in ObservableModelMixin.',
           element: method,
@@ -109,8 +113,8 @@ final class ObservationWidgetGenerator
       if (!requiresObservable &&
           _isObservableType(method.returnType, allowNullable: true)) {
         throw InvalidGenerationSourceError(
-          '@plainState factories must return a non-ObservableObject. Use '
-          '@observableState for observable state.',
+          '@PlainState() factories must return a non-ObservableObject. Use '
+          '@ObservableState() for observable state.',
           element: method,
         );
       }
@@ -118,9 +122,10 @@ final class ObservationWidgetGenerator
       final reader = ConstantReader(stateAnnotation);
       final explicitName = reader.peek('name')?.stringValue;
       final name = explicitName ?? _stateName(method.name!);
-      if (!_isIdentifier(name)) {
+      if (!_isGeneratedStateName(name)) {
         throw InvalidGenerationSourceError(
-          '`$name` is not a valid generated state name.',
+          '`$name` cannot be used as a generated state parameter. Choose a '
+          'non-keyword name other than `context` or `oldWidget`.',
           element: method,
         );
       }
@@ -130,16 +135,30 @@ final class ObservationWidgetGenerator
           element: method,
         );
       }
+      final autoDispose = reader.peek('autoDispose')?.boolValue ?? true;
+      final disposeMethod = _zeroArgumentDispose(method.returnType);
+      if (autoDispose &&
+          disposeMethod != null &&
+          disposeMethod.returnType.getDisplayString() != 'void') {
+        throw InvalidGenerationSourceError(
+          'Automatically managed dispose() methods must return void. Set '
+          'autoDispose to false and use disposeStates() for asynchronous '
+          'cleanup.',
+          element: method,
+        );
+      }
       states.add(
         _StateDescriptor(
           factoryName: method.name!,
           name: name,
           type: type,
-          autoDispose: reader.peek('autoDispose')?.boolValue ?? true,
-          hasDispose: _hasZeroArgumentDispose(method.returnType),
+          autoDispose: autoDispose,
+          hasDispose: disposeMethod != null,
         ),
       );
     }
+
+    _validateBuildMethod(element, states);
 
     if (states.isEmpty) {
       return _generateStatelessBase(element, className);
@@ -151,7 +170,7 @@ final class ObservationWidgetGenerator
 String _generateStatelessBase(ClassElement element, String className) {
   final declaration = _typeParameterDeclaration(element);
   return '''
-abstract class _\$$className$declaration extends ReactiveStatelessWidget {
+abstract class _\$$className$declaration extends ObservationStatelessWidget {
   const _\$$className({super.key});
 }
 ''';
@@ -200,7 +219,7 @@ String _generateStatefulBase(
     ..writeln()
     ..writeln(
       'final class $stateClass$declaration extends State<$widgetType> '
-      'with ReactiveStateMixin<$widgetType> {',
+      'with ObservationStateMixin<$widgetType> {',
     );
 
   for (final state in states) {
@@ -226,9 +245,11 @@ String _generateStatefulBase(
   }
   output
     ..writeln('      _statesReady = true;')
-    ..writeln('    } catch (_) {')
-    ..writeln('      _disposeCreatedStates();')
-    ..writeln('      rethrow;')
+    ..writeln('    } catch (error, stackTrace) {')
+    ..writeln('      runObservationCallbacks([')
+    ..writeln('        () => Error.throwWithStackTrace(error, stackTrace),')
+    ..writeln('        _disposeCreatedStates,')
+    ..writeln('      ]);')
     ..writeln('    }')
     ..writeln('  }')
     ..writeln()
@@ -236,7 +257,7 @@ String _generateStatefulBase(
     ..writeln('  void didUpdateWidget(covariant $widgetType oldWidget) {')
     ..writeln('    super.didUpdateWidget(oldWidget);')
     ..writeln('    if (widget.shouldRecreateStates(oldWidget)) {')
-    ..writeln('      stopReactiveObservation();')
+    ..writeln('      stopObservation();')
     ..writeln('      _disposeStates(oldWidget);')
     ..writeln('      _createStates();')
     ..writeln('    } else {')
@@ -250,7 +271,7 @@ String _generateStatefulBase(
     ..writeln()
     ..writeln('  @override')
     ..writeln('  Widget build(BuildContext context) {')
-    ..writeln('    return buildReactive((context) {')
+    ..writeln('    return buildObserved((context) {')
     ..writeln('      return widget.build(')
     ..writeln('        context,');
   _writeStateArguments(output, states, indent: '        ');
@@ -262,33 +283,34 @@ String _generateStatefulBase(
     ..writeln('  void _disposeStates($widgetType owner) {')
     ..writeln('    if (!_statesReady) return;')
     ..writeln('    _statesReady = false;')
-    ..writeln('    try {')
-    ..writeln('      owner.disposeStates(');
+    ..writeln('    runObservationCallbacks([')
+    ..writeln('      () => owner.disposeStates(');
   _writeStateArguments(output, states, indent: '        ');
   output
-    ..writeln('      );')
-    ..writeln('    } finally {')
-    ..writeln('      _disposeCreatedStates();')
-    ..writeln('    }')
+    ..writeln('      ),')
+    ..writeln('      _disposeCreatedStates,')
+    ..writeln('    ]);')
     ..writeln('  }')
     ..writeln()
-    ..writeln('  void _disposeCreatedStates() {');
+    ..writeln('  void _disposeCreatedStates() {')
+    ..writeln('    runObservationCallbacks([');
   for (final state in states.reversed) {
     final flag = '_has${_upperFirst(state.name)}';
     output
-      ..writeln('    if ($flag) {')
-      ..writeln('      $flag = false;');
+      ..writeln('      if ($flag) () {')
+      ..writeln('        $flag = false;');
     if (state.autoDispose && state.hasDispose) {
-      output.writeln('      _${state.name}.dispose();');
+      output.writeln('        _${state.name}.dispose();');
     }
-    output.writeln('    }');
+    output.writeln('      },');
   }
   output
+    ..writeln('    ]);')
     ..writeln('  }')
     ..writeln()
     ..writeln('  @override')
     ..writeln('  void dispose() {')
-    ..writeln('    stopReactiveObservation();')
+    ..writeln('    stopObservation();')
     ..writeln('    try {')
     ..writeln('      _disposeStates(widget);')
     ..writeln('    } finally {')
@@ -335,13 +357,85 @@ String _upperFirst(String value) =>
 bool _isIdentifier(String value) =>
     RegExp(r'^[A-Za-z_$][A-Za-z0-9_$]*$').hasMatch(value);
 
+bool _isGeneratedStateName(String value) {
+  return _isIdentifier(value) &&
+      !Keyword.keywords.containsKey(value) &&
+      value != 'context' &&
+      value != 'oldWidget';
+}
+
+void _validateBuildMethod(ClassElement element, List<_StateDescriptor> states) {
+  final build = element.methods.where((method) {
+    return method.name == 'build' && !method.isStatic;
+  }).firstOrNull;
+  if (build == null) {
+    throw InvalidGenerationSourceError(
+      '${element.name} must declare an instance build() method.',
+      element: element,
+    );
+  }
+
+  final positional = build.formalParameters
+      .where((parameter) => !parameter.isNamed)
+      .toList();
+  if (positional.length != 1 ||
+      !positional.single.isRequiredPositional ||
+      positional.single.type.getDisplayString() != 'BuildContext') {
+    throw InvalidGenerationSourceError(
+      'build() must start with exactly one required BuildContext parameter.',
+      element: build,
+    );
+  }
+
+  final named = {
+    for (final parameter in build.formalParameters.where(
+      (parameter) => parameter.isNamed,
+    ))
+      parameter.name!: parameter,
+  };
+  final stateNames = states.map((state) => state.name).toSet();
+
+  for (final state in states) {
+    final parameter = named[state.name];
+    if (parameter == null) {
+      throw InvalidGenerationSourceError(
+        'build() must declare `required ${state.type} ${state.name}` for the '
+        'matching state factory.',
+        element: build,
+      );
+    }
+    if (!parameter.isRequiredNamed) {
+      throw InvalidGenerationSourceError(
+        'The `${state.name}` build parameter must be required.',
+        element: parameter,
+      );
+    }
+    if (parameter.type.getDisplayString() != state.type) {
+      throw InvalidGenerationSourceError(
+        'The `${state.name}` build parameter must have type ${state.type}, '
+        'not ${parameter.type.getDisplayString()}.',
+        element: parameter,
+      );
+    }
+  }
+
+  final unexpected = named.keys.where((name) => !stateNames.contains(name));
+  if (unexpected.isNotEmpty) {
+    throw InvalidGenerationSourceError(
+      'The `${unexpected.first}` named build parameter has no matching state '
+      'factory.',
+      element: named[unexpected.first],
+    );
+  }
+}
+
 bool _isObservableType(DartType type, {bool allowNullable = false}) {
   if (!allowNullable && type.nullabilitySuffix == NullabilitySuffix.question) {
     return false;
   }
   if (_observableObjectChecker.isAssignableFromType(type)) return true;
 
-  // On a clean first build, an @observableModel class can still have an unresolved
+  // On a clean first build, an @ObservableModel() class can still have an unresolved
   // generated superclass. Accepting the annotation directly avoids requiring
   // users to run the generator twice before the type hierarchy is complete.
   final element = type.element;
@@ -354,16 +448,16 @@ bool _isObservableType(DartType type, {bool allowNullable = false}) {
       _isObservableType(type.bound, allowNullable: allowNullable);
 }
 
-bool _hasZeroArgumentDispose(DartType type) {
-  if (type is! InterfaceType) return false;
+MethodElement? _zeroArgumentDispose(DartType type) {
+  if (type is! InterfaceType) return null;
 
   for (final interface in [type, ...type.allSupertypes]) {
     final method = interface.getMethod('dispose');
     if (method != null && !method.isStatic && method.formalParameters.isEmpty) {
-      return true;
+      return method;
     }
   }
-  return false;
+  return null;
 }
 
 String _typeParameterDeclaration(ClassElement element) {

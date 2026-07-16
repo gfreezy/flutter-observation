@@ -2,13 +2,13 @@ import 'package:flutter_observation/flutter_observation.dart';
 
 part 'user.g.dart';
 
-@observableModel
+@ObservableModel()
 class Address extends _$Address {
   Address({String city = 'Shanghai', String district = 'Pudong'})
     : super(city, district);
 }
 
-@observableModel
+@ObservableModel()
 class User extends _$User {
   User({
     String name = '',

@@ -1,0 +1,9 @@
+.dart_tool/
+.github/
+build/
+coverage/
+pubspec.lock
+tool/
+example/analysis_options.yaml
+example/macos/
+example/test/

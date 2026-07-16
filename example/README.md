@@ -13,14 +13,14 @@ flutter run -d macos
 
 ## Widget 结构
 
-顶层页面通过 `@observableState` 创建并拥有 User：
+顶层页面通过 `@ObservableState()` 创建并拥有 User：
 
 ```dart
-@observationWidget
+@ObservationWidget()
 class ObservationExample extends _$ObservationExample {
   const ObservationExample({super.key});
 
-  @observableState
+  @ObservableState()
   User createUser() => User(
     address: Address(),
     tags: ObservableList(['Flutter']),
@@ -33,8 +33,8 @@ class ObservationExample extends _$ObservationExample {
 }
 ```
 
-`UserCard` 和 `AddressCard` 使用相同的 `@observationWidget`，但没有任何 state
-factory，因此生成器自动为它们生成 `ReactiveStatelessWidget` 基类。
+`UserCard` 和 `AddressCard` 使用相同的 `@ObservationWidget()`，但没有任何 state
+factory，因此生成器自动为它们生成 `ObservationStatelessWidget` 基类。
 
 ## 页面功能
 
@@ -51,7 +51,7 @@ factory，因此生成器自动为它们生成 `ReactiveStatelessWidget` 基类�
 
 ## 代码位置
 
-- `lib/main.dart`：统一的 `@observationWidget` / `@observableState` 用法。
+- `lib/main.dart`：统一的 `@ObservationWidget()` / `@ObservableState()` 用法。
 - `lib/main.g.dart`：生成的 Widget 生命周期代码。
 - `lib/lifecycle_example.dart`：状态重建和自动释放示例。
 - `lib/user.dart`：User、Address 和 ObservableList。

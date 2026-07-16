@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/scheduler.dart';
+
 import 'observer.dart';
 import 'registrar.dart';
 import 'tracking.dart';
@@ -16,14 +18,25 @@ abstract final class ObservationSchedulers {
   /// changes made before that microtask.
   static void microtask(void Function() callback) =>
       scheduleMicrotask(callback);
+
+  /// Runs the callback at the beginning of the next Flutter frame.
+  static void frame(void Function() callback) {
+    SchedulerBinding.instance.scheduleFrameCallback((_) => callback());
+  }
 }
 
 /// A cancellable, continuously retracked observation.
-final class ObservationSubscription<T> implements ReactiveObserver {
-  ObservationSubscription._(this._read, this._onChange, this._scheduler);
+final class ObservationSubscription<T> implements ObservationObserver {
+  ObservationSubscription._(
+    this._read,
+    this._onChange,
+    this._onError,
+    this._scheduler,
+  );
 
   final T Function() _read;
   final void Function(T value) _onChange;
+  final void Function(Object error, StackTrace stackTrace)? _onError;
   final ObservationScheduler _scheduler;
   final Set<ObservationRegistrar> _registrars = {};
 
@@ -49,7 +62,7 @@ final class ObservationSubscription<T> implements ReactiveObserver {
 
   T _track() {
     _stopObserving();
-    return ReactiveTracking.track(this, _read);
+    return ObservationTracking.track(this, _read);
   }
 
   @override
@@ -61,14 +74,33 @@ final class ObservationSubscription<T> implements ReactiveObserver {
   void invalidate() {
     if (_disposed || _scheduled) return;
     _scheduled = true;
-    _scheduler(_refresh);
+    try {
+      _scheduler(_refresh);
+    } catch (error, stackTrace) {
+      _scheduled = false;
+      _handleRefreshError(error, stackTrace);
+    }
   }
 
   void _refresh() {
     _scheduled = false;
     if (_disposed) return;
-    _value = _track();
-    _onChange(_value);
+    try {
+      _value = _track();
+      _onChange(_value);
+    } catch (error, stackTrace) {
+      _handleRefreshError(error, stackTrace);
+    }
+  }
+
+  void _handleRefreshError(Object error, StackTrace stackTrace) {
+    dispose();
+    final onError = _onError;
+    if (onError != null) {
+      onError(error, stackTrace);
+    } else {
+      Error.throwWithStackTrace(error, stackTrace);
+    }
   }
 
   /// Immediately recollects dependencies and returns the new value.
@@ -77,8 +109,13 @@ final class ObservationSubscription<T> implements ReactiveObserver {
       throw StateError('Cannot refresh a disposed observation.');
     }
     _scheduled = false;
-    _value = _track();
-    return _value;
+    try {
+      _value = _track();
+      return _value;
+    } catch (_) {
+      dispose();
+      rethrow;
+    }
   }
 
   /// Cancels observation and releases all registrar references.
@@ -104,10 +141,16 @@ final class ObservationSubscription<T> implements ReactiveObserver {
 ObservationSubscription<T> observe<T>(
   T Function() read, {
   required void Function(T value) onChange,
+  void Function(Object error, StackTrace stackTrace)? onError,
   bool fireImmediately = false,
   ObservationScheduler scheduler = ObservationSchedulers.microtask,
 }) {
-  final subscription = ObservationSubscription<T>._(read, onChange, scheduler);
+  final subscription = ObservationSubscription<T>._(
+    read,
+    onChange,
+    onError,
+    scheduler,
+  );
   subscription._initialize(fireImmediately: fireImmediately);
   return subscription;
 }
@@ -120,13 +163,38 @@ T withObservationTracking<T>(
   T Function() apply, {
   required void Function() onChange,
 }) {
+  return withCancellableObservationTracking(apply, onChange: onChange).value;
+}
+
+/// Tracks accesses like [withObservationTracking] and also returns a handle
+/// that can cancel the one-shot observation before a change occurs.
+ObservationTrackingHandle<T> withCancellableObservationTracking<T>(
+  T Function() apply, {
+  required void Function() onChange,
+}) {
   final observer = _OneShotObserver(onChange);
   try {
-    return ReactiveTracking.track(observer, apply);
+    final value = ObservationTracking.track(observer, apply);
+    return ObservationTrackingHandle<T>._(value, observer);
   } catch (_) {
     observer.dispose();
     rethrow;
   }
+}
+
+/// The value and cancellation handle produced by one-shot tracking.
+final class ObservationTrackingHandle<T> {
+  const ObservationTrackingHandle._(this.value, this._observer);
+
+  /// The value produced by the tracked closure.
+  final T value;
+  final _OneShotObserver _observer;
+
+  /// Whether this handle is still waiting for its first invalidation.
+  bool get isActive => _observer.isActive;
+
+  /// Stops tracking if the first invalidation has not happened yet.
+  void cancel() => _observer.dispose();
 }
 
 /// Creates a single-subscription stream of values derived by [read].
@@ -139,6 +207,10 @@ Stream<T> observeStream<T>(T Function() read, {bool emitInitial = true}) {
         subscription = observe(
           read,
           onChange: controller.add,
+          onError: (error, stackTrace) {
+            controller.addError(error, stackTrace);
+            controller.close();
+          },
           fireImmediately: emitInitial,
         );
       } catch (error, stackTrace) {
@@ -154,12 +226,14 @@ Stream<T> observeStream<T>(T Function() read, {bool emitInitial = true}) {
   return controller.stream;
 }
 
-final class _OneShotObserver implements ReactiveObserver {
+final class _OneShotObserver implements ObservationObserver {
   _OneShotObserver(this._onChange);
 
   final void Function() _onChange;
   final Set<ObservationRegistrar> _registrars = {};
   bool _fired = false;
+
+  bool get isActive => !_fired && _registrars.isNotEmpty;
 
   @override
   void registerRegistrar(ObservationRegistrar registrar) {
@@ -175,6 +249,7 @@ final class _OneShotObserver implements ReactiveObserver {
   }
 
   void dispose() {
+    _fired = true;
     for (final registrar in _registrars) {
       registrar.removeObserver(this);
     }

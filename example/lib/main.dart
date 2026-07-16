@@ -7,11 +7,11 @@ part 'main.g.dart';
 
 void main() => runApp(const ObservationExample());
 
-@observationWidget
+@ObservationWidget()
 class ObservationExample extends _$ObservationExample {
   const ObservationExample({super.key});
 
-  @observableState
+  @ObservableState()
   User createUser() {
     return User(address: Address(), tags: ObservableList(['Flutter']));
   }
@@ -31,7 +31,7 @@ class ObservationExample extends _$ObservationExample {
   }
 }
 
-@observationWidget
+@ObservationWidget()
 class UserCard extends _$UserCard {
   const UserCard({required this.user, super.key});
 
@@ -58,7 +58,7 @@ class UserCard extends _$UserCard {
   }
 }
 
-@observationWidget
+@ObservationWidget()
 class AddressCard extends _$AddressCard {
   const AddressCard({required this.user, super.key});
 

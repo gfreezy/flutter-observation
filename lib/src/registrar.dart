@@ -1,3 +1,5 @@
+import 'callbacks.dart';
+import 'debug.dart';
 import 'observer.dart';
 import 'observation_key.dart';
 import 'tracking.dart';
@@ -5,28 +7,43 @@ import 'transaction.dart';
 
 /// Stores the property-to-observer relationships for one observable object.
 final class ObservationRegistrar {
-  final Map<Object, Set<ReactiveObserver>> _observersByProperty = {};
+  final Map<Object, Set<ObservationObserver>> _observersByProperty = {};
   final Map<Object, int> _mutationDepthByProperty = {};
 
   /// Records a read of [property] by the current observer, if one exists.
   void access<T>(ObservationKey<T> property) {
-    final observer = ReactiveTracking.currentObserver;
+    final observer = ObservationTracking.currentObserver;
     if (observer == null) return;
 
     _observersByProperty.putIfAbsent(property, () => {}).add(observer);
     observer.registerRegistrar(this);
+    ObservationDebug.emit(
+      kind: ObservationDebugEventKind.access,
+      registrar: this,
+      property: property,
+      observerCount: _observersByProperty[property]!.length,
+    );
   }
 
   /// Invalidates every observer that most recently read [property].
   void notify<T>(ObservationKey<T> property) {
     final observers = _observersByProperty[property];
+    ObservationDebug.emit(
+      kind: ObservationDebugEventKind.notify,
+      registrar: this,
+      property: property,
+      observerCount: observers?.length ?? 0,
+    );
     if (observers == null) return;
 
     // An invalidation may synchronously change subscriptions, so iterate over
     // a snapshot rather than the live set.
-    for (final observer in List<ReactiveObserver>.of(observers)) {
-      ObservationTransaction.invalidate(observer);
-    }
+    runObservationCallbacks(
+      List<ObservationObserver>.of(observers).map(
+        (observer) =>
+            () => ObservationTransaction.invalidate(observer),
+      ),
+    );
   }
 
   /// Marks the beginning of a manually managed mutation of [property].
@@ -70,10 +87,15 @@ final class ObservationRegistrar {
   }
 
   /// Removes [observer] from every property in this registrar.
-  void removeObserver(ReactiveObserver observer) {
+  void removeObserver(ObservationObserver observer) {
     _observersByProperty.removeWhere((_, observers) {
       observers.remove(observer);
       return observers.isEmpty;
     });
+  }
+
+  /// Whether [property] currently has one or more registered observers.
+  bool hasObserversFor<T>(ObservationKey<T> property) {
+    return _observersByProperty[property]?.isNotEmpty ?? false;
   }
 }

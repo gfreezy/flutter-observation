@@ -1,12 +1,12 @@
 import 'package:flutter/widgets.dart';
 
+import 'observation_stateless_widget.dart';
 import 'observer.dart';
-import 'reactive_stateless_widget.dart';
 import 'registrar.dart';
 import 'tracking.dart';
 
 /// A small reactive region that can be embedded in an existing widget tree.
-final class Observer extends ReactiveStatelessWidget {
+final class Observer extends ObservationStatelessWidget {
   const Observer({required this.builder, super.key});
 
   final WidgetBuilder builder;
@@ -17,17 +17,17 @@ final class Observer extends ReactiveStatelessWidget {
 
 /// Adds observation tracking to an existing [State] subclass.
 ///
-/// Wrap the reactive portion of `build` with [buildReactive].
-mixin ReactiveStateMixin<T extends StatefulWidget> on State<T>
-    implements ReactiveObserver {
+/// Wrap the observed portion of `build` with [buildObserved].
+mixin ObservationStateMixin<T extends StatefulWidget> on State<T>
+    implements ObservationObserver {
   final Set<ObservationRegistrar> _observationRegistrars = {};
   bool _observationInvalidated = false;
 
   /// Executes [builder] while tracking observable reads.
-  Widget buildReactive(WidgetBuilder builder) {
+  Widget buildObserved(WidgetBuilder builder) {
     _observationInvalidated = false;
-    stopReactiveObservation();
-    return ReactiveTracking.track(this, () => builder(context));
+    stopObservation();
+    return ObservationTracking.track(this, () => builder(context));
   }
 
   @override
@@ -44,7 +44,7 @@ mixin ReactiveStateMixin<T extends StatefulWidget> on State<T>
 
   /// Cancels the dependencies collected by the latest reactive build.
   @protected
-  void stopReactiveObservation() {
+  void stopObservation() {
     for (final registrar in _observationRegistrars) {
       registrar.removeObserver(this);
     }
@@ -53,7 +53,7 @@ mixin ReactiveStateMixin<T extends StatefulWidget> on State<T>
 
   @override
   void dispose() {
-    stopReactiveObservation();
+    stopObservation();
     super.dispose();
   }
 }
