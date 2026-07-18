@@ -6,7 +6,8 @@ part of 'lifecycle_example.dart';
 // ObservationWidgetGenerator
 // **************************************************************************
 
-abstract class _$LifecycleExample extends StatefulWidget {
+abstract class _$LifecycleExample extends StatefulWidget
+    with ObservationWidgetDiagnostics {
   const _$LifecycleExample({super.key});
 
   Widget build(BuildContext context, {required LifecycleResource resource});
@@ -29,6 +30,11 @@ final class _$LifecycleExampleState extends State<LifecycleExample>
   late LifecycleResource _resource;
   bool _hasResource = false;
   bool _statesReady = false;
+
+  @override
+  Iterable<({String name, Object? value})> get observationOwnedStates => [
+    if (_hasResource) (name: 'resource', value: _resource),
+  ];
 
   @override
   void initState() {
@@ -98,7 +104,8 @@ final class _$LifecycleExampleState extends State<LifecycleExample>
   }
 }
 
-abstract class _$CleanupLifecycleExample extends StatefulWidget {
+abstract class _$CleanupLifecycleExample extends StatefulWidget
+    with ObservationWidgetDiagnostics {
   const _$CleanupLifecycleExample({super.key});
 
   Widget build(
@@ -134,6 +141,12 @@ final class _$CleanupLifecycleExampleState
   late ThrowingCleanupResource _second;
   bool _hasSecond = false;
   bool _statesReady = false;
+
+  @override
+  Iterable<({String name, Object? value})> get observationOwnedStates => [
+    if (_hasFirst) (name: 'first', value: _first),
+    if (_hasSecond) (name: 'second', value: _second),
+  ];
 
   @override
   void initState() {

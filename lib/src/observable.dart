@@ -1,9 +1,15 @@
+import 'debug.dart';
 import 'model.dart';
 import 'observation_key.dart';
 
 /// A standalone observable value.
 final class Observable<T> with ObservableModelMixin {
-  Observable(T value) : _value = value;
+  Observable(T value) : _value = value {
+    observationRegistrar.attachDebugSource(this);
+    if (!ObservationDebug.isReleaseMode) {
+      observationRegisterDebugProperty(_property, () => _value);
+    }
+  }
 
   final ObservationKey<T> _property = ObservationKey<T>('Observable.value');
   T _value;

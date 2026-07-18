@@ -1,6 +1,6 @@
 name: flutter_observation
 description: Property-level observation for Flutter with generated observable models and lifecycle-aware widgets.
-version: 0.2.0-dev.1
+version: 0.2.0-dev.2
 repository: https://github.com/gfreezy/flutter-observation
 issue_tracker: https://github.com/gfreezy/flutter-observation/issues
 topics:
@@ -23,6 +23,7 @@ environment:
 workspace:
   - example
   - packages/flutter_observation_generator
+  - tool/flutter_observation_devtools_extension
 
 dependencies:
   flutter:

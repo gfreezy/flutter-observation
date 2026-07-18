@@ -22,7 +22,7 @@ jobs:
         run: flutter pub get
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test benchmark example/lib example/test packages/flutter_observation_generator/lib packages/flutter_observation_generator/test
+        run: dart format --output=none --set-exit-if-changed lib test benchmark example/lib example/test packages/flutter_observation_generator/lib packages/flutter_observation_generator/test tool/flutter_observation_devtools_extension/lib tool/flutter_observation_devtools_extension/test
 
       - name: Analyze runtime
         run: flutter analyze
@@ -48,6 +48,27 @@ jobs:
       - name: Test example
         working-directory: example
         run: flutter test
+
+      - name: Analyze DevTools extension
+        working-directory: tool/flutter_observation_devtools_extension
+        run: flutter analyze
+
+      - name: Test DevTools extension
+        working-directory: tool/flutter_observation_devtools_extension
+        run: flutter test
+
+      - name: Build DevTools extension
+        working-directory: tool/flutter_observation_devtools_extension
+        run: dart run devtools_extensions build_and_copy --source=. --dest=../../extension/devtools
+
+      - name: Validate DevTools extension
+        working-directory: tool/flutter_observation_devtools_extension
+        run: dart run devtools_extensions validate --package=../..
+
+      - name: Check DevTools assets are current
+        # Flutter injects a non-deterministic serviceWorkerVersion into this
+        # bootstrap file. All deterministic assets remain protected.
+        run: git diff --exit-code -- extension/devtools ':(exclude)extension/devtools/build/flutter_bootstrap.js'
 
       - name: Verify generated output
         working-directory: example

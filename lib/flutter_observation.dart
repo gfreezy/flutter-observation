@@ -17,3 +17,4 @@ export 'src/subscription.dart';
 export 'src/tracking.dart';
 export 'src/transaction.dart';
 export 'src/value_listenable.dart';
+export 'src/widget_diagnostics.dart';

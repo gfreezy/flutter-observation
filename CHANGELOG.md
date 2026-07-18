@@ -1,3 +1,22 @@
+## 0.2.0-dev.2
+
+- Added an automatically registered debug/profile VM Service protocol.
+- Added bounded event recording for dependencies, notifications, rebuilds,
+  subscriptions, and transactions without retaining application objects.
+- Added weak dependency snapshots, bounded state value inspection while the
+  DevTools panel is open, and multi-listener debug events.
+- Added a read-only Flutter DevTools extension with overview, dependency, event,
+  state, and hot-property views.
+- Added cross-tab source/property navigation and direct Widget/State selection
+  in Flutter Inspector.
+- Added owned and observed business state as separate top-level Widget
+  properties in Flutter Inspector.
+- Added expandable backing-field values for generated models and every built-in
+  observable collection, plus `ObservationInspector` Console access to the
+  currently selected Widget's business state.
+- Added weak `#id` object lookup with `ObservationInspector.stateById()` for
+  direct Console inspection without extending application object lifetimes.
+
 ## 0.2.0-dev.1
 
 - Unified public Observation naming and uppercase annotation constructors.

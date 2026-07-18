@@ -6,7 +6,8 @@ part of 'main.dart';
 // ObservationWidgetGenerator
 // **************************************************************************
 
-abstract class _$ObservationExample extends StatefulWidget {
+abstract class _$ObservationExample extends StatefulWidget
+    with ObservationWidgetDiagnostics {
   const _$ObservationExample({super.key});
 
   Widget build(BuildContext context, {required User user});
@@ -29,6 +30,11 @@ final class _$ObservationExampleState extends State<ObservationExample>
   late User _user;
   bool _hasUser = false;
   bool _statesReady = false;
+
+  @override
+  Iterable<({String name, Object? value})> get observationOwnedStates => [
+    if (_hasUser) (name: 'user', value: _user),
+  ];
 
   @override
   void initState() {

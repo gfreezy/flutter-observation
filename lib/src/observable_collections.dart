@@ -1,6 +1,7 @@
 import 'dart:collection';
 import 'dart:math';
 
+import 'debug.dart';
 import 'model.dart';
 import 'observation_key.dart';
 import 'registrar.dart';
@@ -11,7 +12,13 @@ import 'transaction.dart';
 /// observation tracking.
 final class ObservableList<E> extends ListBase<E> implements ObservableObject {
   ObservableList([Iterable<E> values = const []])
-    : _values = List<E>.of(values, growable: true);
+    : _values = List<E>.of(values, growable: true) {
+    _registrar.attachDebugSource(this);
+    if (!ObservationDebug.isReleaseMode) {
+      _registrar.registerDebugProperty(_contentsKey, () => _values);
+      _registrar.registerDebugProperty(_lengthKey, () => _values.length);
+    }
+  }
 
   final List<E> _values;
   final ObservationRegistrar _registrar = ObservationRegistrar();
@@ -30,10 +37,16 @@ final class ObservableList<E> extends ListBase<E> implements ObservableObject {
 
   ObservationKey<Object?> _indexKey(int index) {
     if (!_indexKeys.containsKey(index)) _maybePruneIndexKeys();
-    return _indexKeys.putIfAbsent(
-      index,
-      () => ObservationKey<Object?>('ObservableList[$index]'),
-    );
+    return _indexKeys.putIfAbsent(index, () {
+      final property = ObservationKey<Object?>('ObservableList[$index]');
+      if (!ObservationDebug.isReleaseMode) {
+        _registrar.registerDebugProperty(
+          property,
+          () => index >= 0 && index < _values.length ? _values[index] : null,
+        );
+      }
+      return property;
+    });
   }
 
   void _maybePruneIndexKeys() {
@@ -244,7 +257,12 @@ final class ObservableList<E> extends ListBase<E> implements ObservableObject {
 /// observes the complete contents.
 final class ObservableMap<K, V> extends MapBase<K, V>
     implements ObservableObject {
-  ObservableMap([Map<K, V>? values]) : _values = Map<K, V>.of(values ?? {});
+  ObservableMap([Map<K, V>? values]) : _values = Map<K, V>.of(values ?? {}) {
+    _registrar.attachDebugSource(this);
+    if (!ObservationDebug.isReleaseMode) {
+      _registrar.registerDebugProperty(_contentsKey, () => _values);
+    }
+  }
 
   final Map<K, V> _values;
   final ObservationRegistrar _registrar = ObservationRegistrar();
@@ -260,10 +278,13 @@ final class ObservableMap<K, V> extends MapBase<K, V>
 
   ObservationKey<Object?> _entryKey(Object? key) {
     if (!_entryKeys.containsKey(key)) _maybePruneEntryKeys();
-    return _entryKeys.putIfAbsent(
-      key,
-      () => ObservationKey<Object?>('ObservableMap[$key]'),
-    );
+    return _entryKeys.putIfAbsent(key, () {
+      final property = ObservationKey<Object?>('ObservableMap[$key]');
+      if (!ObservationDebug.isReleaseMode) {
+        _registrar.registerDebugProperty(property, () => _values[key]);
+      }
+      return property;
+    });
   }
 
   void _maybePruneEntryKeys() {
@@ -399,7 +420,12 @@ final class ObservableMap<K, V> extends MapBase<K, V>
 /// A set whose direct membership reads are tracked independently while
 /// iteration observes the complete contents.
 final class ObservableSet<E> extends SetBase<E> implements ObservableObject {
-  ObservableSet([Iterable<E> values = const []]) : _values = Set<E>.of(values);
+  ObservableSet([Iterable<E> values = const []]) : _values = Set<E>.of(values) {
+    _registrar.attachDebugSource(this);
+    if (!ObservationDebug.isReleaseMode) {
+      _registrar.registerDebugProperty(_contentsKey, () => _values);
+    }
+  }
 
   final Set<E> _values;
   final ObservationRegistrar _registrar = ObservationRegistrar();
@@ -415,10 +441,16 @@ final class ObservableSet<E> extends SetBase<E> implements ObservableObject {
 
   ObservationKey<Object?> _elementKey(Object? value) {
     if (!_elementKeys.containsKey(value)) _maybePruneElementKeys();
-    return _elementKeys.putIfAbsent(
-      value,
-      () => ObservationKey<Object?>('ObservableSet[$value]'),
-    );
+    return _elementKeys.putIfAbsent(value, () {
+      final property = ObservationKey<Object?>('ObservableSet[$value]');
+      if (!ObservationDebug.isReleaseMode) {
+        _registrar.registerDebugProperty(
+          property,
+          () => _values.contains(value),
+        );
+      }
+      return property;
+    });
   }
 
   void _maybePruneElementKeys() {

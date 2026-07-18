@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:flutter_observation_example/advanced_models.dart';
 import 'package:flutter_observation_example/lifecycle_example.dart';
+import 'package:flutter_observation_example/main.dart';
 import 'package:flutter_observation_example/user.dart';
 
 void main() {
@@ -132,6 +133,52 @@ void main() {
     expect(externalChanges, 1);
   });
 
+  test('generated model exposes opt-in read-only DevTools state', () {
+    final user = User(
+      name: 'Alice',
+      age: 20,
+      address: Address(),
+      tags: ObservableList(['Flutter']),
+    );
+    ObservationDebug.setValueInspection(true);
+
+    try {
+      Map<String, Object?> userSnapshot() {
+        final sources =
+            ObservationDebug.snapshot()['sources']!
+                as List<Map<String, Object?>>;
+        return sources.firstWhere(
+          (source) => source['id'] == ObservationDebug.idFor(user),
+        );
+      }
+
+      Map<String, Object?> property(String label) {
+        final properties =
+            userSnapshot()['properties']! as List<Map<String, Object?>>;
+        return properties.firstWhere(
+          (property) => property['label'].toString().contains(label),
+        );
+      }
+
+      expect(
+        (property('User.name')['value']! as Map<String, Object?>)['display'],
+        '"Alice"',
+      );
+      expect(
+        (property('User.age')['value']! as Map<String, Object?>)['display'],
+        '20',
+      );
+
+      user.name = 'Tom';
+      expect(
+        (property('User.name')['value']! as Map<String, Object?>)['display'],
+        '"Tom"',
+      );
+    } finally {
+      ObservationDebug.setValueInspection(false);
+    }
+  });
+
   testWidgets('generated Widget owns, observes, and disposes @PlainState', (
     tester,
   ) async {
@@ -158,6 +205,21 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     expect(tracker.disposed, 2);
+  });
+
+  testWidgets('generated Widget exposes named state in Flutter diagnostics', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ObservationExample());
+
+    final widget = tester.widget<ObservationExample>(
+      find.byType(ObservationExample),
+    );
+    final userState = widget.toDiagnosticsNode().getProperties().singleWhere(
+      (property) => property.name == 'owned state · user',
+    );
+
+    expect(userState.toDescription(), startsWith('User #'));
   });
 
   testWidgets('generated cleanup continues after a dispose error', (

@@ -367,13 +367,150 @@ void main() {
       ObservationDebug.onEvent = null;
     }
 
-    expect(events.map((event) => event.kind), [
-      ObservationDebugEventKind.access,
-      ObservationDebugEventKind.notify,
-    ]);
+    expect(
+      events.map((event) => event.kind),
+      containsAllInOrder([
+        ObservationDebugEventKind.access,
+        ObservationDebugEventKind.dependencyAdded,
+        ObservationDebugEventKind.notify,
+        ObservationDebugEventKind.invalidate,
+        ObservationDebugEventKind.dependencyRemoved,
+      ]),
+    );
     expect(events.first.property.toString(), contains('Observable.value'));
     expect(events.first.observerCount, 1);
   });
+
+  test('ObservationDebug supports independent disposable listeners', () {
+    final value = Observable(1);
+    final firstEvents = <ObservationDebugEvent>[];
+    final secondEvents = <ObservationDebugEvent>[];
+    final first = ObservationDebug.addListener(firstEvents.add);
+    final second = ObservationDebug.addListener(secondEvents.add);
+
+    withObservationTracking(() => value.value, onChange: () {});
+    first.dispose();
+    value.value = 2;
+    second.dispose();
+
+    expect(first.isDisposed, isTrue);
+    expect(second.isDisposed, isTrue);
+    expect(
+      firstEvents.map((event) => event.kind),
+      contains(ObservationDebugEventKind.dependencyAdded),
+    );
+    expect(
+      firstEvents.map((event) => event.kind),
+      isNot(contains(ObservationDebugEventKind.notify)),
+    );
+    expect(
+      secondEvents.map((event) => event.kind),
+      contains(ObservationDebugEventKind.notify),
+    );
+  });
+
+  test('ObservationDebug value previews do not call arbitrary toString', () {
+    final value = ObservationDebug.describeValue(_ThrowingToString());
+
+    expect(value['kind'], 'object');
+    expect(value['type'], '_ThrowingToString');
+    expect(value['display'], startsWith('_ThrowingToString #'));
+    expect(value['referenceId'], isA<int>());
+  });
+
+  test('ObservationDebug IDs resolve weakly for Console inspection', () {
+    final value = Observable(1);
+    final id = ObservationDebug.idFor(value);
+
+    expect(ObservationDebug.idFor(value), id);
+    expect(ObservationDebug.objectForId(id), same(value));
+    expect(ObservationInspector.stateById(id), same(value));
+    expect(ObservationInspector.stateById<Observable<String>>(id), isNull);
+    expect(ObservationInspector.stateById(-1), isNull);
+  });
+
+  test(
+    'ObservationDebug records bounded serializable events and snapshots',
+    () {
+      ObservationDebug.clearEvents();
+      ObservationDebug.setRecording(true, capacity: 3);
+      final value = Observable(1);
+      final subscription = observe(
+        () => value.value,
+        onChange: (_) {},
+        scheduler: ObservationSchedulers.immediate,
+      );
+
+      try {
+        final snapshot = ObservationDebug.snapshot();
+        final sources = snapshot['sources']! as List<Map<String, Object?>>;
+        final source = sources.firstWhere(
+          (source) =>
+              (source['type']! as String).startsWith('Observable<int>') &&
+              source['observerCount'] == 1 &&
+              (source['properties']! as List).isNotEmpty,
+        );
+        final properties = source['properties']! as List<Map<String, Object?>>;
+
+        expect(snapshot['protocolVersion'], ObservationDebug.protocolVersion);
+        expect(
+          properties.single['label'].toString(),
+          contains('Observable.value'),
+        );
+        expect(properties.single['observerCount'], 1);
+        expect(properties.single, isNot(contains('value')));
+
+        ObservationDebug.setValueInspection(true);
+        final inspectedSnapshot = ObservationDebug.snapshot();
+        final inspectedSources =
+            inspectedSnapshot['sources']! as List<Map<String, Object?>>;
+        final inspectedSource = inspectedSources.firstWhere(
+          (source) =>
+              (source['type']! as String).startsWith('Observable<int>') &&
+              source['observerCount'] == 1 &&
+              (source['properties']! as List).isNotEmpty,
+        );
+        final inspectedProperties =
+            inspectedSource['properties']! as List<Map<String, Object?>>;
+        final inspectedValue =
+            inspectedProperties.single['value']! as Map<String, Object?>;
+        expect(inspectedValue['display'], '1');
+        expect(inspectedValue['type'], 'int');
+
+        value.value = 2;
+        final updatedSnapshot = ObservationDebug.snapshot();
+        final updatedSources =
+            updatedSnapshot['sources']! as List<Map<String, Object?>>;
+        final updatedSource = updatedSources.firstWhere(
+          (source) =>
+              (source['type']! as String).startsWith('Observable<int>') &&
+              source['observerCount'] == 1 &&
+              (source['properties']! as List).isNotEmpty,
+        );
+        final updatedProperties =
+            updatedSource['properties']! as List<Map<String, Object?>>;
+        final updatedValue =
+            updatedProperties.single['value']! as Map<String, Object?>;
+        expect(updatedValue['display'], '2');
+        final events = ObservationDebug.eventsAfter(0, limit: 100);
+        expect(events, hasLength(3));
+        expect(
+          events.every((event) => !event.containsKey('registrar')),
+          isTrue,
+        );
+        expect(
+          events.map((event) => event['kind']),
+          isNot(contains(ObservationDebugEventKind.access.name)),
+        );
+        expect(ObservationDevTools.isInitialized, isTrue);
+      } finally {
+        subscription.dispose();
+        ObservationDebug.setValueInspection(false);
+        ObservationDebug.setRecording(false);
+        ObservationDebug.clearEvents();
+      }
+    },
+  );
 
   test('observeStream emits initial and subsequent derived values', () async {
     final model = _User();
@@ -440,6 +577,32 @@ void main() {
       expect(builds, 2);
     },
   );
+
+  testWidgets('widget observers expose Inspector metadata and selection', (
+    tester,
+  ) async {
+    final user = _User();
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: _NameWidget(user: user, onBuild: () {}),
+      ),
+    );
+
+    final sources = ObservationDebug.snapshot()['sources']! as List;
+    final observer = sources
+        .whereType<Map>()
+        .expand((source) => (source['properties']! as List).whereType<Map>())
+        .expand((property) => (property['observers']! as List).whereType<Map>())
+        .firstWhere((observer) => observer['label'] == '_NameWidget');
+
+    expect(observer['stateLabel'], '_NameWidget State');
+    expect(observer['canInspect'], isTrue);
+    expect(
+      ObservationDebug.selectInspectorTarget(observer['id']! as int),
+      isTrue,
+    );
+  });
 
   testWidgets(
     'ObservationStatelessWidget coalesces changes before next frame',
@@ -575,6 +738,116 @@ void main() {
     expect(find.text('Alice'), findsOneWidget);
   });
 
+  testWidgets('Flutter diagnostics show observed business state', (
+    tester,
+  ) async {
+    final user = _User();
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: _NameWidget(user: user, onBuild: () {}),
+      ),
+    );
+
+    final widget = tester.widget<_NameWidget>(find.byType(_NameWidget));
+    final properties = widget.toDiagnosticsNode().getProperties();
+    final observedState = properties.singleWhere(
+      (property) => property.name == 'observed state',
+    );
+
+    expect(observedState.toDescription(), startsWith('_User #'));
+    final stateProperties = observedState.getProperties();
+    expect(
+      stateProperties
+          .singleWhere((property) => property.name == 'User.name')
+          .toDescription(),
+      '""',
+    );
+    expect(
+      stateProperties
+          .singleWhere((property) => property.name == 'User.age')
+          .toDescription(),
+      '18',
+    );
+    final frameworkState = tester.state<State>(find.byType(_NameWidget));
+    expect(
+      frameworkState.toDiagnosticsNode().getProperties().where(
+        (property) => property.name == 'observed state',
+      ),
+      isEmpty,
+    );
+  });
+
+  testWidgets('Flutter diagnostics expand every observable value type', (
+    tester,
+  ) async {
+    final scalar = Observable(7);
+    final list = ObservableList<int>([1, 2]);
+    final map = ObservableMap<String, int>({'count': 1});
+    final set = ObservableSet<String>({'a'});
+
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: _ObservableDiagnosticsWidget(
+          scalar: scalar,
+          list: list,
+          map: map,
+          set: set,
+        ),
+      ),
+    );
+
+    final widget = tester.widget<_ObservableDiagnosticsWidget>(
+      find.byType(_ObservableDiagnosticsWidget),
+    );
+    final observedStates = widget
+        .toDiagnosticsNode()
+        .getProperties()
+        .where((property) => property.name == 'observed state')
+        .toList();
+
+    DiagnosticsNode stateStartingWith(String type) => observedStates
+        .singleWhere((state) => state.toDescription().startsWith(type));
+
+    expect(
+      stateStartingWith('Observable<int>')
+          .getProperties()
+          .singleWhere((property) => property.name == 'Observable.value')
+          .toDescription(),
+      '7',
+    );
+    expect(
+      stateStartingWith(
+        'ObservableList<int>',
+      ).getProperties().map((property) => property.name),
+      containsAll([
+        'ObservableList.contents',
+        'ObservableList.length',
+        'ObservableList[0]',
+      ]),
+    );
+    expect(
+      stateStartingWith(
+        'ObservableMap<String, int>',
+      ).getProperties().map((property) => property.name),
+      containsAll(['ObservableMap.contents', 'ObservableMap[count]']),
+    );
+    expect(
+      stateStartingWith(
+        'ObservableSet<String>',
+      ).getProperties().map((property) => property.name),
+      containsAll(['ObservableSet.contents', 'ObservableSet[a]']),
+    );
+    expect(ObservationInspector.statesFor(widget), {
+      'observed state · Observable<int>': same(scalar),
+      'observed state · ObservableList<int>': same(list),
+      'observed state · ObservableMap<String, int>': same(map),
+      'observed state · ObservableSet<String>': same(set),
+    });
+  });
+
   testWidgets(
     'ObservationStatefulWidget owns, updates, recreates, and disposes its model',
     (tester) async {
@@ -593,6 +866,12 @@ void main() {
       );
       expect(lifecycle.created, 1);
       expect(find.text('Alice'), findsOneWidget);
+
+      final widget = tester.widget<_UserView>(find.byType(_UserView));
+      final ownedState = widget.toDiagnosticsNode().getProperties().singleWhere(
+        (property) => property.name == 'owned state · model',
+      );
+      expect(ownedState.toDescription(), startsWith('_User #'));
 
       lifecycle.model!.name = 'Tom';
       await tester.pump();
@@ -626,6 +905,11 @@ void main() {
       expect(lifecycle.disposed, 2);
     },
   );
+}
+
+final class _ThrowingToString {
+  @override
+  String toString() => throw StateError('must not be called');
 }
 
 Future<void> _flushMicrotasks() => Future<void>.delayed(Duration.zero);
@@ -663,6 +947,13 @@ final class _User with ObservableModelMixin {
   String _name = '';
   int _age = 18;
 
+  _User() {
+    if (!ObservationDebug.isReleaseMode) {
+      observationRegisterDebugProperty(_nameKey, () => _name);
+      observationRegisterDebugProperty(_ageKey, () => _age);
+    }
+  }
+
   String get name {
     observationAccess(_nameKey);
     return _name;
@@ -696,6 +987,27 @@ final class _NameWidget extends ObservationStatelessWidget {
   Widget build(BuildContext context) {
     onBuild();
     return Text(user.name);
+  }
+}
+
+final class _ObservableDiagnosticsWidget extends ObservationStatelessWidget {
+  const _ObservableDiagnosticsWidget({
+    required this.scalar,
+    required this.list,
+    required this.map,
+    required this.set,
+  });
+
+  final Observable<int> scalar;
+  final ObservableList<int> list;
+  final ObservableMap<String, int> map;
+  final ObservableSet<String> set;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      '${scalar.value}:${list[0]}:${map['count']}:${set.contains('a')}',
+    );
   }
 }
 

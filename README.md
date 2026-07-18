@@ -50,11 +50,11 @@ Widget 中存在 `@PlainState()` 或 `@ObservableState()` factory 时，生成�
 dependencies:
   flutter:
     sdk: flutter
-  flutter_observation: ^0.2.0-dev.1
+  flutter_observation: ^0.2.0-dev.2
 
 dev_dependencies:
   build_runner: ^2.15.1
-  flutter_observation_generator: ^0.2.0-dev.1
+  flutter_observation_generator: ^0.2.0-dev.2
 ```
 
 ```bash
@@ -694,7 +694,122 @@ observationTransaction(() {
 重新抛出第一个错误。公开的 `runObservationCallbacks()` 可用于需要相同行为的自定义
 清理或通知代码。
 
-## 调试和性能基线
+## Flutter DevTools Extension
+
+`flutter_observation` 从 `0.2.0-dev.2` 开始内置只读 DevTools Extension。应用以
+debug 或 profile 模式运行并连接 DevTools 后，会出现 `flutter_observation` 标签页；
+第一次打开需要在 DevTools 的 Extensions 对话框中启用。
+
+无需在 `main()` 中初始化。创建第一个 `ObservationRegistrar` 时会自动注册当前
+isolate 的 VM Service protocol；当前面板读取 main isolate。release 构建不会注册、
+记录或保留调试数据。
+
+Extension 提供：
+
+- **Overview**：Observable source、被观察属性、observer、通知、失效和重建数量。
+- **State**：按 source 查看生成 Model、`Observable<T>` 和可观察集合的当前状态；
+  Observable 引用可点击跳到目标 source。
+- **Dependencies**：当前 `Observable.property → Widget/Subscription` 依赖关系；显示
+  实际 Widget 和对应 State，点击可在 Flutter Inspector 中选中该 Element。
+- **Events**：依赖增删、通知、失效、重建、连续观察和事务时间线；source、property
+  和 Widget 引用可跳到对应 State、Dependencies 或 Flutter Inspector。
+- **Hot properties**：事件窗口内通知次数最多的属性。
+
+跳转到 Flutter Inspector 后，原生 `state` 属性只显示真实的 Flutter `State` 类型。
+Observation 业务状态会作为独立的 Widget property 行显示：生成器创建的
+`@ObservableState()` / `@PlainState()` 使用 `owned state · 名称`，当前 Widget 在
+最近一次 build 中读取的 Observable source 使用 `observed state`。例如：
+
+```text
+state                _$ObservationExampleState#...
+owned state · user   User #16
+
+state                _ObservationStatelessWidgetState#...
+observed state       User #16
+observed state       ObservableList<String> #10
+```
+
+这里的稳定 ID 与 Extension 的 State、Dependencies 页一致；业务属性的完整值仍在
+Extension 的 State 页查看。Flutter Inspector 当前不向第三方 diagnostics 开放属性行
+点击回调，因此跨页跳转仍从 Extension 的 Dependencies 或 Events 中发起。
+
+将鼠标停在 `owned state` 或 `observed state` 的值上，悬浮面板会显示已注册的
+backing-field 值。生成 Model 自动包含所有可观察字段；内置类型包括：
+
+- `Observable<T>`：`Observable.value`
+- `ObservableList<T>`：`contents`、`length`，以及本次实际读取的索引
+- `ObservableMap<K, V>`：`contents`，以及本次实际读取的 key
+- `ObservableSet<T>`：`contents`，以及本次实际读取的成员关系
+
+也可以在 Flutter Inspector 的 Console 中读取当前选中 Widget 的真实业务对象：
+
+```dart
+// 查看当前 Widget 的全部 owned / observed state
+ObservationInspector.selectedStates
+
+// 按类型取得第一个匹配的 state
+ObservationInspector.selectedStateOf<User>()
+
+// 查看集合内容
+ObservationInspector
+    .selectedStateOf<ObservableList<String>>()
+    ?.toList()
+
+ObservationInspector
+    .selectedStateOf<ObservableSet<String>>()
+    ?.toSet()
+
+ObservationInspector
+    .selectedStateOf<ObservableMap<String, int>>()
+    ?.entries
+    .toList()
+
+// 也可以直接使用 Inspector / Extension 显示的 #id
+ObservationInspector.stateById(5)
+ObservationInspector.stateById<ObservableList<String>>(5)?.toList()
+```
+
+`ObservationInspector` 仅用于 debug/profile 诊断；release 模式返回空结果，Console
+表达式求值需要 debug 模式。取得的是实际业务对象而不是副本，因此应避免在检查时
+意外修改它。
+
+`#id` 由 `ObservationDebug.idFor()` 按对象身份分配，同一个对象在当前 Dart isolate
+生命周期内保持稳定且不会复用。它不是跨 isolate 的全局 ID；hot restart、应用重启、
+切换设备或连接另一个 isolate 后都可能重新从相同数字开始。反查采用弱引用，对象被
+回收后 `stateById()` 会返回 `null`。
+
+State 页始终显示当前值；打开 Extension 时自动启用读取，关闭面板后停止。状态可能
+包含 token、用户资料等敏感数据。生成代码注册的是 backing-field reader，读取不会
+调用 Observable getter、不会产生新依赖，也不会调用任意业务对象的 `toString()`。
+字符串和集合预览有长度上限，Observable 引用只显示类型和稳定 ID；快照不会保留
+业务对象的原始引用。release 构建会移除 reader 和 Inspector target 注册。
+
+面板默认不记录每次属性读取，因为 `access` 频率通常很高；需要时可打开
+`Property reads`。记录使用有界 ring buffer，默认最多 2000 条。
+
+底层 VM Service 方法如下，主要供其他工具集成：
+
+```text
+ext.flutter_observation.getSnapshot
+ext.flutter_observation.getEvents
+ext.flutter_observation.setRecording
+ext.flutter_observation.setValueInspection
+ext.flutter_observation.selectInspectorTarget
+ext.flutter_observation.clearEvents
+```
+
+开发 Extension 源码：
+
+```bash
+cd tool/flutter_observation_devtools_extension
+flutter test
+dart run devtools_extensions build_and_copy \
+  --source=. \
+  --dest=../../extension/devtools
+dart run devtools_extensions validate --package=../..
+```
+
+## 调试 API 和性能基线
 
 开发工具可以订阅属性访问和通知事件；未设置回调时不会分配事件对象：
 
@@ -709,9 +824,31 @@ ObservationDebug.onEvent = (event) {
 ObservationDebug.onEvent = null;
 ```
 
-事件包含 `kind`（`access` 或 `notify`）、`registrar`、`property` 和
-`observerCount`。这是全局调试钩子，测试和开发工具使用完后应恢复为 `null`；为
-`null` 时运行时不会为它创建事件对象。
+多个工具需要同时监听时，使用不会互相覆盖的 listener：
+
+```dart
+final handle = ObservationDebug.addListener((event) {
+  print(event.toJson());
+});
+
+handle.dispose();
+```
+
+也可以直接控制有界记录器和 opt-in 状态快照：
+
+```dart
+ObservationDebug.setRecording(true, capacity: 1000);
+ObservationDebug.setValueInspection(true);
+final snapshot = ObservationDebug.snapshot();
+final events = ObservationDebug.eventsAfter(0);
+ObservationDebug.setValueInspection(false);
+ObservationDebug.setRecording(false);
+```
+
+事件 kind 包括 access、依赖增删、notify、invalidate、重建、连续观察和事务；同时
+包含 sequence、timestamp、稳定 ID、类型、属性与 observer label。`registrar`、
+`property`、`observer` 原始引用只会传给进程内 listener，不进入序列化缓存。
+未设置 listener 且记录器关闭时不会创建事件对象。
 
 运行仓库内的性能基线：
 
@@ -748,6 +885,12 @@ class Box<T extends Object?> extends _$Box<T> {
 
 ```dart
 class ManualCounter with ObservableModelMixin {
+  ManualCounter() {
+    if (!ObservationDebug.isReleaseMode) {
+      observationRegisterDebugProperty(_countKey, () => _count);
+    }
+  }
+
   static final ObservationKey<int> _countKey =
       ObservationKey<int>('ManualCounter.count');
 
@@ -773,11 +916,21 @@ class ManualCounter with ObservableModelMixin {
 每个属性应持有一个生命周期稳定的 `ObservationKey<T>`；key 按 identity 区分，通常
 声明为 `static final`。mixin 自动提供 `ObservationRegistrar` 以及
 `observationAccess`、`observationMutation`、`observationNotify`。
+如果希望手写属性出现在 DevTools State 页，再通过
+`observationRegisterDebugProperty()` 注册直接读取 backing field 的闭包；release
+分支会被常量消除。
 
 更底层的适配器可以直接实现 `ObservableObject` 并暴露 Registrar：
 
 ```dart
 class ExternalValue implements ObservableObject {
+  ExternalValue() {
+    observationRegistrar.attachDebugSource(this);
+    if (!ObservationDebug.isReleaseMode) {
+      observationRegistrar.registerDebugProperty(_valueKey, () => _value);
+    }
+  }
+
   @override
   final observationRegistrar = ObservationRegistrar();
 
@@ -872,8 +1025,12 @@ Observation 的属性注册关系由 Widget 或 subscription owner 解除；纯 
 | Scheduling | `ObservationSchedulers` | immediate、microtask、frame 调度器 |
 | Transaction | `observationTransaction()` | 合并一组 mutation 的重复失效 |
 | Transaction | `ObservationTransaction` | 事务的底层静态接口 |
-| Debugging | `ObservationDebug` | 全局 access/notify 事件 hook |
+| Debugging | `ObservationDebug` | 多 listener、事件记录和依赖快照 |
 | Debugging | `ObservationDebugEvent`、`ObservationDebugEventKind` | 调试事件数据和类型 |
+| Debugging | `ObservationDebugListenerHandle` | 多 listener 注册的幂等释放句柄 |
+| Debugging | `ObservationInspector` | 从 Console 按当前 Widget、类型或 `#id` 读取业务状态 |
+| Debugging | `ObservationDevTools` | debug/profile VM Service bridge |
+| Low-level integration | `ObservationDebugSnapshotProvider` | 为 DevTools 提供无业务值依赖快照的底层协议 |
 | Low-level integration | `ObservationKey<T>` | 属性 identity 与调试标签 |
 | Low-level integration | `ObservationRegistrar` | 属性到观察者的注册、mutation 和通知 |
 | Low-level integration | `ObservationObserver` | renderer 或订阅实现的失效协议 |

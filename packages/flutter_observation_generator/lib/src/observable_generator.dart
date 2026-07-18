@@ -113,7 +113,25 @@ final class ObservableGenerator
       if (index > 0) output.write(', ');
       output.write('_${parameter.name} = ${parameter.name}');
     }
-    output.writeln(';');
+    final observedParameters = parameters
+        .where((parameter) => !_ignoredChecker.hasAnnotationOf(parameter))
+        .toList(growable: false);
+    if (observedParameters.isEmpty) {
+      output.writeln(';');
+    } else {
+      output
+        ..writeln(' {')
+        ..writeln('    if (!ObservationDebug.isReleaseMode) {');
+      for (final parameter in observedParameters) {
+        final name = parameter.name!;
+        output.writeln(
+          '      observationRegisterDebugProperty(_${name}Key, () => _$name);',
+        );
+      }
+      output
+        ..writeln('    }')
+        ..writeln('  }');
+    }
 
     for (final parameter in parameters) {
       final name = parameter.name!;

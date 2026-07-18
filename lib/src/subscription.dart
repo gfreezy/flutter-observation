@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/scheduler.dart';
 
+import 'debug.dart';
 import 'observer.dart';
 import 'registrar.dart';
 import 'tracking.dart';
@@ -62,7 +63,19 @@ final class ObservationSubscription<T> implements ObservationObserver {
 
   T _track() {
     _stopObserving();
-    return ObservationTracking.track(this, _read);
+    ObservationDebug.labelObserver(this, 'ObservationSubscription<$T>');
+    ObservationDebug.emit(
+      kind: ObservationDebugEventKind.observationStart,
+      observer: this,
+    );
+    try {
+      return ObservationTracking.track(this, _read);
+    } finally {
+      ObservationDebug.emit(
+        kind: ObservationDebugEventKind.observationEnd,
+        observer: this,
+      );
+    }
   }
 
   @override
@@ -173,6 +186,7 @@ ObservationTrackingHandle<T> withCancellableObservationTracking<T>(
   required void Function() onChange,
 }) {
   final observer = _OneShotObserver(onChange);
+  ObservationDebug.labelObserver(observer, 'One-shot observation');
   try {
     final value = ObservationTracking.track(observer, apply);
     return ObservationTrackingHandle<T>._(value, observer);

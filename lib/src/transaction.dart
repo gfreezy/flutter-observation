@@ -1,6 +1,7 @@
 import 'dart:collection';
 
 import 'callbacks.dart';
+import 'debug.dart';
 import 'observer.dart';
 
 /// Coalesces observation invalidations produced by a group of mutations.
@@ -13,12 +14,28 @@ abstract final class ObservationTransaction {
   /// An observer invalidated by several properties during the transaction is
   /// invalidated once when the outermost transaction completes.
   static T run<T>(T Function() body) {
+    final outermost = _depth == 0;
+    if (outermost) {
+      ObservationDebug.emit(
+        kind: ObservationDebugEventKind.transactionStart,
+        transactionDepth: 1,
+      );
+    }
     _depth++;
     try {
       return body();
     } finally {
       _depth--;
-      if (_depth == 0) _flush();
+      if (_depth == 0) {
+        try {
+          _flush();
+        } finally {
+          ObservationDebug.emit(
+            kind: ObservationDebugEventKind.transactionEnd,
+            transactionDepth: 1,
+          );
+        }
+      }
     }
   }
 

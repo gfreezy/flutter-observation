@@ -1,0 +1,5 @@
+name: flutter_observation
+version: 0.2.0-dev.2
+issueTracker: https://github.com/gfreezy/flutter-observation/issues
+materialIconCodePoint: '0xe335'
+requiresConnection: true

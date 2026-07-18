@@ -1,9 +1,11 @@
 import 'package:flutter/widgets.dart';
 
 import 'observer_widget.dart';
+import 'widget_diagnostics.dart';
 
 /// An observation widget that creates and owns one long-lived [Model].
-abstract class ObservationStatefulWidget<Model> extends StatefulWidget {
+abstract class ObservationStatefulWidget<Model> extends StatefulWidget
+    with ObservationWidgetDiagnostics {
   const ObservationStatefulWidget({super.key});
 
   /// Creates the model owned by this location in the widget tree.
@@ -39,6 +41,11 @@ final class _ObservationStatefulWidgetState<Model>
     extends State<ObservationStatefulWidget<Model>>
     with ObservationStateMixin<ObservationStatefulWidget<Model>> {
   late Model _model;
+
+  @override
+  Iterable<({String name, Object? value})> get observationOwnedStates => [
+    (name: 'model', value: _model),
+  ];
 
   @override
   void initState() {

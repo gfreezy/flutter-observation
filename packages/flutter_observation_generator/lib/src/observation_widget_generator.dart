@@ -188,7 +188,8 @@ String _generateStatefulBase(
   final stateClass = '_\$${className}State';
   final output = StringBuffer()
     ..writeln(
-      'abstract class _\$$className$declaration extends StatefulWidget {',
+      'abstract class _\$$className$declaration extends StatefulWidget '
+      'with ObservationWidgetDiagnostics {',
     )
     ..writeln('  const _\$$className({super.key});')
     ..writeln()
@@ -229,6 +230,20 @@ String _generateStatefulBase(
   }
   output
     ..writeln('  bool _statesReady = false;')
+    ..writeln()
+    ..writeln('  @override')
+    ..writeln(
+      '  Iterable<({String name, Object? value})> get '
+      'observationOwnedStates => [',
+    );
+  for (final state in states) {
+    output.writeln(
+      "    if (_has${_upperFirst(state.name)}) "
+      "(name: '${state.name}', value: _${state.name}),",
+    );
+  }
+  output
+    ..writeln('  ];')
     ..writeln()
     ..writeln('  @override')
     ..writeln('  void initState() {')

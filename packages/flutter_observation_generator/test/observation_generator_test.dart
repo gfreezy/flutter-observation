@@ -103,6 +103,18 @@ class CounterPage extends _$CounterPage {
       ),
     );
     expect(generated, contains('final ObservationKey<T> _valueKey'));
+    expect(
+      generated,
+      contains('observationRegisterDebugProperty(_valueKey, () => _value);'),
+    );
+    expect(
+      generated,
+      isNot(
+        contains(
+          'observationRegisterDebugProperty(_cacheHitsKey, () => _cacheHits);',
+        ),
+      ),
+    );
     expect(generated, contains('final String _id;'));
     expect(generated, isNot(contains('set id(')));
     expect(generated, isNot(contains('_cacheHitsKey')));
@@ -117,7 +129,12 @@ class CounterPage extends _$CounterPage {
     );
     expect(
       generated,
-      contains('abstract class _\$CounterPage extends StatefulWidget'),
+      matches(
+        RegExp(
+          r'abstract class _\$CounterPage extends StatefulWidget\s+'
+          r'with ObservationWidgetDiagnostics',
+        ),
+      ),
     );
     expect(generated, isNot(contains('Observable<int> createCount();')));
     expect(generated, isNot(contains('Box<int> createBox();')));
@@ -127,6 +144,14 @@ class CounterPage extends _$CounterPage {
     expect(generated, isNot(contains('Settings makeSettings();')));
     expect(generated, contains('State<CounterPage> createState()'));
     expect(generated, contains('extends State<CounterPage>'));
+    expect(
+      generated,
+      contains("if (_hasCount) (name: 'count', value: _count),"),
+    );
+    expect(
+      generated,
+      contains("if (_hasResource) (name: 'resource', value: _resource),"),
+    );
     expect(generated, contains('count: _count,'));
     expect(generated, contains('box: _box,'));
     expect(generated, contains('items: _items,'));

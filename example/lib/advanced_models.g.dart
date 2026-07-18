@@ -11,7 +11,13 @@ abstract class _$Box<T extends Object?> with ObservableModelMixin {
     : _value = value,
       _id = id,
       _cacheHits = cacheHits,
-      _revision = revision;
+      _revision = revision {
+    if (!ObservationDebug.isReleaseMode) {
+      observationRegisterDebugProperty(_valueKey, () => _value);
+      observationRegisterDebugProperty(_idKey, () => _id);
+      observationRegisterDebugProperty(_revisionKey, () => _revision);
+    }
+  }
   final ObservationKey<T> _valueKey = ObservationKey<T>('Box.value');
   T _value;
 

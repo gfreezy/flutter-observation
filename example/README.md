@@ -44,6 +44,37 @@ factory，因此生成器自动为它们生成 `ObservationStatelessWidget` 基�
 - `Change city` 修改嵌套 Address。
 - `Replace address` 替换整个嵌套对象。
 
+## DevTools Extension
+
+以 debug/profile 模式运行 Example 后打开 Flutter DevTools，在 Extensions 中启用
+`flutter_observation`。Overview 会显示 User、Address 和 ObservableList；点击页面
+按钮后，可以在 Dependencies 和 Events 中查看属性依赖、通知、失效与 Widget 重建。
+State 页会直接显示 name、age、address、tags 以及嵌套 Address 的当前状态；点击
+`Address #id` 或 `ObservableList #id` 会展开并定位目标 source。Dependencies 中显示
+实际 Widget 和对应 State，点击会跳到 Flutter Inspector。
+
+Flutter Inspector 原生 `state` 行只显示框架 State。其下方会用独立属性行显示
+Observation 业务状态：`ObservationExample` 显示
+`owned state · user → User #id`；`UserCard` 和 `AddressCard` 显示最近一次 build
+实际读取的 `observed state`。
+
+悬浮 `User`、`Address` 或 `ObservableList` 行可以展开 backing-field 当前值。在下方
+Console 中也可以读取 Inspector 当前选中的业务状态：
+
+```dart
+ObservationInspector.selectedStates
+ObservationInspector.selectedStateOf<User>()?.age
+ObservationInspector
+    .selectedStateOf<ObservableList<String>>()
+    ?.join(', ')
+ObservationInspector.stateById<ObservableList<String>>(5)?.toList()
+```
+
+这里的 `#id` 只在当前 Dart isolate 的本次运行中唯一；hot restart 后会重新编号。
+
+状态读取仅在 Extension 打开期间启用，是 debug/profile 下的只读操作，不会修改
+业务值或产生新的依赖。
+
 ## 高级生成器示例
 
 `lib/advanced_models.dart` 中的 `Box<T>` 演示泛型 Model、只读、忽略、强制

@@ -14,8 +14,18 @@ mixin ObservableModelMixin implements ObservableObject {
   @override
   final ObservationRegistrar observationRegistrar = ObservationRegistrar();
 
+  /// Registers a backing-field reader for opt-in debug state inspection.
+  void observationRegisterDebugProperty<T>(
+    ObservationKey<T> property,
+    T Function() reader,
+  ) {
+    observationRegistrar.attachDebugSource(this);
+    observationRegistrar.registerDebugProperty(property, reader);
+  }
+
   /// Records a read of [property].
   void observationAccess<T>(ObservationKey<T> property) {
+    observationRegistrar.attachDebugSource(this);
     observationRegistrar.access(property);
   }
 
@@ -24,11 +34,13 @@ mixin ObservableModelMixin implements ObservableObject {
     ObservationKey<T> property,
     R Function() mutation,
   ) {
+    observationRegistrar.attachDebugSource(this);
     return observationRegistrar.withMutation(property, mutation);
   }
 
   /// Explicitly notifies observers after an externally managed mutation.
   void observationNotify<T>(ObservationKey<T> property) {
+    observationRegistrar.attachDebugSource(this);
     observationRegistrar.notify(property);
   }
 }
