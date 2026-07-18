@@ -57,6 +57,16 @@ jobs:
         working-directory: tool/flutter_observation_devtools_extension
         run: flutter test
 
+      # Run publish validation before rebuilding the checked-in DevTools
+      # assets. Flutter's web builder rewrites non-deterministic files and
+      # platform-specific mode bits, which would make pub report a dirty tree.
+      - name: Validate runtime package
+        run: dart pub publish --dry-run
+
+      - name: Validate generator package
+        working-directory: packages/flutter_observation_generator
+        run: dart pub publish --dry-run
+
       - name: Build DevTools extension
         working-directory: tool/flutter_observation_devtools_extension
         run: dart run devtools_extensions build_and_copy --source=. --dest=../../extension/devtools
@@ -80,10 +90,3 @@ jobs:
 
       - name: Check generated files are current
         run: git diff --exit-code -- example/lib
-
-      - name: Validate runtime package
-        run: dart pub publish --dry-run
-
-      - name: Validate generator package
-        working-directory: packages/flutter_observation_generator
-        run: dart pub publish --dry-run
