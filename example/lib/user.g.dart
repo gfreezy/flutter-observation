@@ -7,7 +7,9 @@ part of 'user.dart';
 // **************************************************************************
 
 abstract class _$Address with ObservableModelMixin {
-  _$Address(String city, String district) : _city = city, _district = district {
+  _$Address({required String city, required String district})
+    : _city = city,
+      _district = district {
     if (!ObservationDebug.isReleaseMode) {
       observationRegisterDebugProperty(_cityKey, () => _city);
       observationRegisterDebugProperty(_districtKey, () => _district);
@@ -49,11 +51,15 @@ abstract class _$Address with ObservableModelMixin {
 }
 
 abstract class _$User with ObservableModelMixin {
-  _$User(String name, int age, Address address, ObservableList<String> tags)
-    : _name = name,
-      _age = age,
-      _address = address,
-      _tags = tags {
+  _$User({
+    required String name,
+    required int age,
+    required Address address,
+    required ObservableList<String> tags,
+  }) : _name = name,
+       _age = age,
+       _address = address,
+       _tags = tags {
     if (!ObservationDebug.isReleaseMode) {
       observationRegisterDebugProperty(_nameKey, () => _name);
       observationRegisterDebugProperty(_ageKey, () => _age);

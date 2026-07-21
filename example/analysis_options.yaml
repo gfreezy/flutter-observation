@@ -3,3 +3,9 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - "**/*.g.dart"
+
+linter:
+  rules:
+    # Observable model declarations intentionally retain explicit types on
+    # super parameters so a clean first generator run has type information.
+    type_init_formals: false

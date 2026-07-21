@@ -68,6 +68,19 @@ final class ObservableGenerator
         element: constructor,
       );
     }
+    final implicitSuperParameter = parameters
+        .whereType<SuperFormalParameterElement>()
+        .where((parameter) => parameter.hasImplicitType)
+        .firstOrNull;
+    if (implicitSuperParameter != null) {
+      final name = implicitSuperParameter.name ?? 'property';
+      throw InvalidGenerationSourceError(
+        'Observable model super parameters must declare an explicit type so '
+        'properties can be generated on a clean first build. Write '
+        '`Type super.$name`.',
+        element: implicitSuperParameter,
+      );
+    }
     final parameterNames = parameters
         .map((parameter) => parameter.name)
         .toSet();
@@ -96,17 +109,29 @@ final class ObservableGenerator
       }
     }
 
+    final usesSuperParameters = parameters.any(
+      (parameter) => parameter is SuperFormalParameterElement,
+    );
     final output = StringBuffer()
       ..writeln(
         'abstract class _\$$className${_typeParameterDeclaration(element)} '
         'with ObservableModelMixin {',
-      )
-      ..write('  _\$$className(');
-    for (final parameter in parameters) {
-      output.write(_parameterSource(parameter));
-      output.write(',');
+      );
+    if (usesSuperParameters) {
+      output.writeln('  _\$$className({');
+      for (final parameter in parameters) {
+        output.writeln('    required ${_parameterSource(parameter)},');
+      }
+      output.writeln('  })');
+    } else {
+      output.write('  _\$$className(');
+      for (final parameter in parameters) {
+        output
+          ..write(_parameterSource(parameter))
+          ..write(',');
+      }
+      output.writeln(')');
     }
-    output.writeln(')');
     output.write('      : ');
     for (var index = 0; index < parameters.length; index++) {
       final parameter = parameters[index];

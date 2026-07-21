@@ -1,3 +1,9 @@
+## Unreleased
+
+- Added typed super-parameter model declarations without repeating a
+  `super(...)` initializer, while preserving the original positional
+  constructor form per model.
+
 ## 0.2.0-dev.2
 
 - Updated the runtime constraint and documentation for the DevTools-enabled

@@ -70,7 +70,7 @@ part 'user.g.dart';
 
 @ObservableModel()
 class User extends _$User {
-  User({String name = '', int age = 18}) : super(name, age);
+  User({String super.name = '', int super.age = 18});
 
   void celebrateBirthday() => age++;
 
@@ -78,8 +78,19 @@ class User extends _$User {
 }
 ```
 
-构造参数定义生成属性的名称、类型和初始值。普通计算 getter 会继续跟踪它读取的
-底层属性，因此 `label` 会自动依赖 `name` 和 `age`。
+构造参数定义生成属性的名称、类型和初始值。这里使用 Dart 的 typed super
+parameters，把参数直接转发给生成基类，因此不需要重复编写
+`: super(name, age)`。普通计算 getter 会继续跟踪它读取的底层属性，因此
+`label` 会自动依赖 `name` 和 `age`。
+
+原有写法继续支持，生成器会自动为它保留 positional 基类构造函数：
+
+```dart
+@ObservableModel()
+class User extends _$User {
+  User({String name = '', int age = 18}) : super(name, age);
+}
+```
 
 生成代码：
 
@@ -98,6 +109,11 @@ Model generator 的输入规则：
 - 类必须是 concrete class，并继承生成的 `_$ClassName`。
 - 必须声明 unnamed generative constructor，且至少有一个 named parameter。
 - constructor parameter 就是生成属性，不要在类体中再次声明同名字段。
+- Model constructor 可以使用 typed super parameters，也可以继续使用普通参数和
+  positional `super(...)` initializer；生成器会按类自动选择对应构造函数。
+- 使用 super parameters 时必须保留显式类型，让首次生成在尚无 `.g.dart` 时仍能
+  确定属性类型。若项目启用了 `type_init_formals` lint，请为 Model 文件关闭这条
+  纯样式规则。
 - 泛型和泛型 bound 会保留到生成基类。
 - 默认 setter 使用 `==` 去重；赋相等值不会通知。
 
@@ -410,7 +426,7 @@ constructor 传递、放在自定义 `InheritedWidget` 中，或者交给 Provid
 ```dart
 @ObservableModel()
 class AppState extends _$AppState {
-  AppState({String currentUserName = ''}) : super(currentUserName);
+  AppState({String super.currentUserName = ''});
 }
 
 @ObservationWidget()
@@ -572,12 +588,12 @@ tags.transaction((tags) {
 ```dart
 @ObservableModel()
 class Address extends _$Address {
-  Address({String city = 'Shanghai'}) : super(city);
+  Address({String super.city = 'Shanghai'});
 }
 
 @ObservableModel()
 class User extends _$User {
-  User({required Address address}) : super(address);
+  User({required Address super.address});
 }
 ```
 
@@ -862,11 +878,11 @@ flutter test benchmark/observation_benchmark.dart --reporter expanded
 @ObservableModel()
 class Box<T extends Object?> extends _$Box<T> {
   Box({
-    required T value,
-    @ObservationReadOnly() required String id,
-    @ObservationIgnored() int cacheHits = 0,
-    @ObservationAlwaysNotify() int revision = 0,
-  }) : super(value, id, cacheHits, revision);
+    required T super.value,
+    @ObservationReadOnly() required String super.id,
+    @ObservationIgnored() int super.cacheHits = 0,
+    @ObservationAlwaysNotify() int super.revision = 0,
+  });
 }
 ```
 

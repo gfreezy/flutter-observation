@@ -20,7 +20,7 @@ Generate observable models and observation widgets:
 ```dart
 @ObservableModel()
 class Counter extends _$Counter {
-  Counter({int value = 0}) : super(value);
+  Counter({int super.value = 0});
 }
 
 @ObservationWidget()
@@ -39,6 +39,20 @@ class CounterPage extends _$CounterPage {
 
 ```bash
 dart run build_runner build
+```
+
+Keep the explicit type on each model super parameter. It lets the generator
+resolve properties on a clean first build before the generated superclass
+exists. Projects that enable the `type_init_formals` style lint should disable
+it for observable model declarations.
+
+The original constructor form remains supported per model:
+
+```dart
+@ObservableModel()
+class Counter extends _$Counter {
+  Counter({int value = 0}) : super(value);
+}
 ```
 
 Generated observable models also register release-elided backing-field readers

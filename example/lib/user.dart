@@ -4,18 +4,17 @@ part 'user.g.dart';
 
 @ObservableModel()
 class Address extends _$Address {
-  Address({String city = 'Shanghai', String district = 'Pudong'})
-    : super(city, district);
+  Address({String super.city = 'Shanghai', String super.district = 'Pudong'});
 }
 
 @ObservableModel()
 class User extends _$User {
   User({
-    String name = '',
-    int age = 18,
-    required Address address,
-    required ObservableList<String> tags,
-  }) : super(name, age, address, tags);
+    String super.name = '',
+    int super.age = 18,
+    required Address super.address,
+    required ObservableList<String> super.tags,
+  });
 
   void celebrateBirthday() => age++;
 

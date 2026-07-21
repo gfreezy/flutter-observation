@@ -6,11 +6,11 @@ part 'advanced_models.g.dart';
 @ObservableModel()
 class Box<T extends Object?> extends _$Box<T> {
   Box({
-    required T value,
-    @ObservationReadOnly() required String id,
-    @ObservationIgnored() int cacheHits = 0,
-    @ObservationAlwaysNotify() int revision = 0,
-  }) : super(value, id, cacheHits, revision);
+    required T super.value,
+    @ObservationReadOnly() required String super.id,
+    @ObservationIgnored() int super.cacheHits = 0,
+    @ObservationAlwaysNotify() int super.revision = 0,
+  });
 
   static final ObservationKey<String> _externalStatusKey =
       ObservationKey<String>('Box.externalStatus');

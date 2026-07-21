@@ -30,11 +30,16 @@ class SizedBox extends Widget {
 @ObservableModel()
 class Box<T extends Object?> extends _$Box<T> {
   Box({
-    required T value,
-    @ObservationReadOnly() required String id,
-    @ObservationIgnored() int cacheHits = 0,
-    @ObservationAlwaysNotify() int revision = 0,
-  }) : super(value, id, cacheHits, revision);
+    required T super.value,
+    @ObservationReadOnly() required String super.id,
+    @ObservationIgnored() int super.cacheHits = 0,
+    @ObservationAlwaysNotify() int super.revision = 0,
+  });
+}
+
+@ObservableModel()
+class LegacyModel extends _$LegacyModel {
+  LegacyModel({String title = '', int count = 0}) : super(title, count);
 }
 
 @ObservationWidget()
@@ -102,6 +107,23 @@ class CounterPage extends _$CounterPage {
         'abstract class _\$Box<T extends Object?> with ObservableModelMixin',
       ),
     );
+    expect(
+      generated,
+      matches(
+        RegExp(
+          r'_\$Box\(\{\s*required T value,\s*required String id,\s*'
+          r'required int cacheHits,\s*required int revision,\s*\}\)',
+        ),
+      ),
+    );
+    expect(
+      generated,
+      contains('abstract class _\$LegacyModel with ObservableModelMixin'),
+    );
+    expect(
+      generated,
+      matches(RegExp(r'_\$LegacyModel\(String title,\s*int count\)')),
+    );
     expect(generated, contains('final ObservationKey<T> _valueKey'));
     expect(
       generated,
@@ -168,6 +190,26 @@ class CounterPage extends _$CounterPage {
     expect(generated, contains('runObservationCallbacks(['));
     expect(generated, isNot(contains('_settings.dispose();')));
     expect(generated, isNot(contains('disposeIfNeeded')));
+  });
+
+  test('rejects untyped super parameters on a clean build', () async {
+    final logs = await _generatorLogs('untyped_model.dart', r'''
+import 'package:flutter_observation/flutter_observation.dart';
+
+part 'untyped_model.g.dart';
+
+@ObservableModel()
+class InvalidModel extends _$InvalidModel {
+  InvalidModel({super.value = 0});
+}
+''');
+
+    expect(
+      logs,
+      contains(
+        'Observable model super parameters must declare an explicit type',
+      ),
+    );
   });
 
   test('rejects a non-observable @ObservableState return type', () async {

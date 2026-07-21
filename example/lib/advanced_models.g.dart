@@ -7,11 +7,15 @@ part of 'advanced_models.dart';
 // **************************************************************************
 
 abstract class _$Box<T extends Object?> with ObservableModelMixin {
-  _$Box(T value, String id, int cacheHits, int revision)
-    : _value = value,
-      _id = id,
-      _cacheHits = cacheHits,
-      _revision = revision {
+  _$Box({
+    required T value,
+    required String id,
+    required int cacheHits,
+    required int revision,
+  }) : _value = value,
+       _id = id,
+       _cacheHits = cacheHits,
+       _revision = revision {
     if (!ObservationDebug.isReleaseMode) {
       observationRegisterDebugProperty(_valueKey, () => _value);
       observationRegisterDebugProperty(_idKey, () => _id);
