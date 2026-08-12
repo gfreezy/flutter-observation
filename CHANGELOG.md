@@ -1,4 +1,4 @@
-## 0.2.0-dev.3
+## 0.2.0
 
 - Added typed super-parameter model declarations without repeating a
   `super(...)` initializer, while preserving the original positional

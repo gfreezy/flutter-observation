@@ -8,11 +8,11 @@ dependency:
 
 ```yaml
 dependencies:
-  flutter_observation: ^0.2.0-dev.3
+  flutter_observation: ^0.2.0
 
 dev_dependencies:
   build_runner: ^2.15.1
-  flutter_observation_generator: ^0.2.0-dev.3
+  flutter_observation_generator: ^0.2.0
 ```
 
 Generate observable models and observation widgets:
