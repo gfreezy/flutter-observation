@@ -1,8 +1,10 @@
-## Unreleased
+## 0.2.0-dev.3
 
 - Added typed super-parameter model declarations without repeating a
   `super(...)` initializer, while preserving the original positional
   constructor form per model.
+- Updated the generator toolchain to the newest versions compatible with the
+  current stable Flutter SDK.
 
 ## 0.2.0-dev.2
 

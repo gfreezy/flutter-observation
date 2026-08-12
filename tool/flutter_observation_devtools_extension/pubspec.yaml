@@ -1,7 +1,7 @@
 name: flutter_observation_devtools_extension
 description: Development source for the flutter_observation DevTools extension.
 publish_to: none
-version: 0.2.0-dev.2
+version: 0.2.0-dev.3
 
 environment:
   sdk: ^3.12.0

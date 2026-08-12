@@ -28756,7 +28756,7 @@ $S:2}
 A.aux.prototype={
 $1(a){var s=A.dc().b
 s=s==null?null:s.canvasKitBaseUrl
-return(s==null?"https://www.gstatic.com/flutter-canvaskit/83675ed27633283e7fc296c8bca22e841224c096/":s)+a},
+return(s==null?"https://www.gstatic.com/flutter-canvaskit/5a2a6a42cce67f965cf540fcecf616faca624aa1/":s)+a},
 $S:27}
 A.K_.prototype={
 XP(){var s=this.xT(),r=$.b8.bo().ImageFilter.MakeColorFilter(s,null)

@@ -1,6 +1,6 @@
 name: flutter_observation_generator
 description: Source generator for flutter_observation models and lifecycle-aware observation widgets.
-version: 0.2.0-dev.2
+version: 0.2.0-dev.3
 repository: https://github.com/gfreezy/flutter-observation/tree/main/packages/flutter_observation_generator
 issue_tracker: https://github.com/gfreezy/flutter-observation/issues
 topics:
@@ -15,10 +15,10 @@ environment:
 resolution: workspace
 
 dependencies:
-  analyzer: ^10.0.0
-  build: ^4.0.0
-  flutter_observation: ^0.2.0-dev.2
-  source_gen: ^4.2.3
+  analyzer: ^12.1.0
+  build: ^4.0.7
+  flutter_observation: ^0.2.0-dev.3
+  source_gen: ^4.2.4
 
 dev_dependencies:
   build_test: ^3.5.16
