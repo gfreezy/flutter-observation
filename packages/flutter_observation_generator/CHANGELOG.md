@@ -1,3 +1,10 @@
+## 0.2.1
+
+- Updated `analyzer`, `build_runner`, `build_test`, and `test` to their newest
+  mutually compatible versions on the current stable Flutter SDK.
+- Relaxed the `test` constraint so Flutter's SDK-pinned `test_api` version can
+  be selected during workspace resolution.
+
 ## 0.2.0
 
 - Added typed super-parameter model declarations without repeating a

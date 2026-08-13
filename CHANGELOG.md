@@ -1,3 +1,9 @@
+## 0.2.1
+
+- Updated the workspace development and test toolchain for compatibility with
+  the current stable Flutter SDK.
+- Excluded generated build and platform directories from static analysis.
+
 ## 0.2.0
 
 - Added typed super-parameter model declarations without repeating a
